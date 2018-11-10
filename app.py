@@ -24,7 +24,15 @@ class BooksAnalysis(object):
 
     def order_book_analysis(self, instrument_id, size=200):
         order_books = self.get_order_book(instrument_id, size)
-        print('order_books =>', order_books)
+        ask_volume = sum(x['volume'] for x in order_books['asks'])
+        bid_volume = sum(x['volume'] for x in order_books['bids'])
+        gap_volume = bid_volume - ask_volume
+        gap_rate = str(round((gap_volume*100 / min(bid_volume, ask_volume)), 2)) + '%'
+        print('ask_volume =>', ask_volume)
+        print('bid_volume =>', bid_volume)
+        print('gap_volume =>', gap_volume)
+        print('gap_rate =>', gap_rate)
+
 
 
 
