@@ -5,6 +5,7 @@
 
 import exchange.okex.futures_api as okex_future
 import time
+import datetime
 class BooksAnalysis(object):
 
     def __init__(self, exchange='okex'):
@@ -42,9 +43,11 @@ def main():
     print('main start ...')
     books_analysis = BooksAnalysis('okex')
     while True:
+        print('######################################')
+        print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         books_analysis.order_book_analysis('EOS-USD-181228', 200)
         time.sleep(3)
-    print('main end ...')
+        print('######################################')
 
 if __name__ == '__main__':
     main()
