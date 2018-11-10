@@ -4,7 +4,7 @@
 
 
 import exchange.okex.futures_api as okex_future
-
+import time
 class BooksAnalysis(object):
 
     def __init__(self, exchange='okex'):
@@ -24,8 +24,8 @@ class BooksAnalysis(object):
 
     def order_book_analysis(self, instrument_id, size=200):
         order_books = self.get_order_book(instrument_id, size)
-        ask_volume = sum(x['volume'] for x in order_books['asks'])
         bid_volume = sum(x['volume'] for x in order_books['bids'])
+        ask_volume = sum(x['volume'] for x in order_books['asks'])
         gap_volume = bid_volume - ask_volume
         gap_rate = str(round((gap_volume*100 / min(bid_volume, ask_volume)), 2)) + '%'
         print('ask_volume =>', ask_volume)
@@ -41,8 +41,9 @@ class BooksAnalysis(object):
 def main():
     print('main start ...')
     books_analysis = BooksAnalysis('okex')
-    books_analysis.order_book_analysis('EOS-USD-181228', 200)
-
+    while True:
+        books_analysis.order_book_analysis('EOS-USD-181228', 200)
+        time.sleep(3)
     print('main end ...')
 
 if __name__ == '__main__':
