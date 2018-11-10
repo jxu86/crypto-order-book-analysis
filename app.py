@@ -9,7 +9,7 @@ class BooksAnalysis(object):
 
     def __init__(self, exchange='okex'):
         self._exchange = exchange
-        self.okex_future_api = okex_future.FutureAPI('21312408-9af7-4572-a6db-930e40f7ce61', '7A3ACA71DBC68F5A8A37B60C65740122', 'Xjc12345', True)
+        self.okex_future_api = okex_future.FutureAPI('XXX', 'XXX', 'XXX', True)
 
     def get_order_book(self, instrument_id, size=200):
         print('###get_order_book')
