@@ -60,7 +60,7 @@ def macd_signal(price_list):
             else:
                 hist_sign -= 1
                 
-        if hist_sign == -5 and sample_hist[-2] < sample_hist[-1] and min(sample_hist) == sample_hist[-2]:
+        if hist_sign == -5 and sample_hist[-2] < sample_hist[-1]:# and min(sample_hist) == sample_hist[-2]:
             print('#####macd buy signal')
             sig = 'buy'
         elif hist_sign == 5 and sample_hist[-2] > sample_hist[-1] and max(sample_hist) == sample_hist[-2]:

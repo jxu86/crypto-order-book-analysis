@@ -6,16 +6,28 @@ import numpy as np
 import time
 import datetime
 import config
-
+from mongo_service.mongodb import MongoService
 
 
 class FutureSpotStrategy(object):
     def __init__(self):
+        self.mongodb = MongoService(host=config.mongo_host, port=config.mongo_port)
         self.spot_pair = 'EOS-USDT'
         self.future_pair = 'EOS-USD-190329'
         self.spot_api = spot_api.SpotAPI(config.apikey, config.secretkey, config.password, True)
         self.future_api = futures_api.FutureAPI(config.apikey, config.secretkey, config.password, True)
-        self.trade_info = []
+        self.trade_info = self.get_pending_info()
+
+
+    def get_pending_info(self):
+        ret = self.mongodb.find(self.mongodb.predict_info, {'type':'pending'})
+        print('##get_pending_info=>ret==>', ret)
+        return ret
+    # def insert_info(self, data):
+        # self.mongodb.update(self.mongodb.predict_info, {'stime': data['stime'], 's_price': data['s_price']}, {'$set': data})
+        
+    def update_info(self, data):
+        self.mongodb.update(self.mongodb.predict_info, {'stime': data['stime'], 's_price': data['s_price']}, {'$set': data})
 
     def get_kline(self, instrument_id, start='', end='', granularity=60, size = 300):
         limit = 300
@@ -37,7 +49,7 @@ class FutureSpotStrategy(object):
         return float(ticker['last'])
 
     def start_new_predict(self, price, t_price, side):
-        self.trade_info.append({
+        predict = {
                 's_price': price,
                 't_price': t_price,
                 'e_price': 0,
@@ -45,7 +57,10 @@ class FutureSpotStrategy(object):
                 'type': 'pending',
                 'stime': datetime.datetime.now(),
                 'etime': 0
-            })
+            }
+        self.trade_info.append(predict)
+        self.update_info(predict)
+        
     def check_predict(self):
         if len(self.trade_info) == 0:
             return 'done'
@@ -59,6 +74,7 @@ class FutureSpotStrategy(object):
                 info['type'] = 'done'
                 info['e_price'] = last
                 info['etime'] = datetime.datetime.now()
+                self.update_info(info)
         return info['type']
 
     def run(self):
