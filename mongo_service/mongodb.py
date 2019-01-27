@@ -1,6 +1,5 @@
 # import pymongo
 from pymongo import MongoClient
-# import datetime
 
 
 class MongoService(object):
@@ -10,6 +9,7 @@ class MongoService(object):
         self.order = self.db.order
         self.account = self.db.account
         self.predict_info = self.db.predict_info
+        self.order_router = self.db.order_router
 
     def update(self, collection, query, udata, upsert=True):
         return collection.update(query, udata, upsert=upsert)
