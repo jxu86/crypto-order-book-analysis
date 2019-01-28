@@ -10,6 +10,14 @@ from mongo_service.mongodb import MongoService
 import uuid
 import constant
 
+# TODO 
+# 撤单处理
+# 风控
+# 加入order book分析，以便可以以最优方式下单
+# 两个任务同时进行
+# 计算收益
+# 策略任务订单存储可以是给接口，例如redis
+
 
 class OrderRouter(object):
     def __init__(self):
@@ -205,7 +213,7 @@ class OrderRouter(object):
         return order
 
     def run(self):
-        if len(self.order_router) == 0:
+        if len(self.order_router) == 0: # 没有需要执行的订单任务
             return 0
 
         new_order_router = []
@@ -219,7 +227,7 @@ class OrderRouter(object):
 
             if order_info[
                     'status'] != 'pending' or old_strategy_status != order_info[
-                        'strategy_status']:
+                        'strategy_status']: # 状态有变化需要update到mongo
                 self.save_order(order_info)
         self.order_router = new_order_router
         return len(self.order_router)
