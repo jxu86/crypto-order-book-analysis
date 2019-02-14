@@ -4,7 +4,7 @@ import datetime
 import time
 import pytz
 import numpy as np
-import talib
+
 
 TIME_ZONE = 'Asia/Shanghai'
 
@@ -44,29 +44,3 @@ def calc_profit(price, fee_rate=0.001, profit_point=0.001, side='buy'):
 #     return (a1-a2)/a2+(b2-b1)/b1 -0.006
 
 
-def macd_signal(price_list):
-        sig = 'no'
-        SHORTPERIOD = 12
-        LONGPERIOD = 26
-        SMOOTHPERIOD = 9
-        OBSERVATION = 100
-        macd, signal, hist = talib.MACD(price_list, fastperiod=SHORTPERIOD, slowperiod=LONGPERIOD, signalperiod=SMOOTHPERIOD)
-        sample_hist = hist[-5:len(hist)]
-        hist_sign = 0
-
-        for h in sample_hist:
-            if h > 0:
-                hist_sign += 1
-            else:
-                hist_sign -= 1
-                
-        if hist_sign == -5 and sample_hist[-2] < sample_hist[-1] and min(sample_hist) == sample_hist[-2]:
-            print('#####macd buy signal')
-            sig = 'buy'
-        elif hist_sign == 5 and sample_hist[-2] > sample_hist[-1] and max(sample_hist) == sample_hist[-2]:
-            print('#####macd sell signal')
-            sig = 'sell'
-
-        print('hist=>',hist[-5:len(hist)])
-        print('hist_sign=>',hist_sign)
-        return sig

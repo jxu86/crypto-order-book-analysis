@@ -9,15 +9,18 @@ import config
 from mongo_service.mongodb import MongoService
 import uuid
 import constant
-
+import signals.macd as macd
+import signals.ema as ema
 # TODO 
+# 强行平仓止损
 # 撤单处理
 # 风控
 # 加入order book分析，以便可以以最优方式下单
 # 两个任务同时进行
 # 计算收益
+# paper trading
+# 回测
 # 策略任务订单存储可以是给接口，例如redis
-
 
 class OrderRouter(object):
     def __init__(self):
@@ -28,7 +31,7 @@ class OrderRouter(object):
             config.apikey, config.secretkey, config.password, True)
         self.strategy_status = [
             'start', 'order_submit', 'order_filled', 'p_order_sumbit',
-            'p_order_filled', 'done'
+            'p_order_filled', 'stop_loss', 'done'
         ]
 
     def get_pending_order(self):
@@ -89,6 +92,12 @@ class OrderRouter(object):
         except:
             return False
 
+    def get_last(self, instrument_id):
+        ticker = self.future_api.get_specific_ticker(
+            instrument_id=instrument_id)
+        return float(ticker['last'])
+
+
     def get_order_info(self, instrument_id, order_id):
         return self.future_api.get_order_info(order_id, instrument_id)
 
@@ -111,7 +120,7 @@ class OrderRouter(object):
         idx = self.strategy_status.index(c_status) + step
         return self.strategy_status[idx]
 
-    def add_order(self, instrument_id, price, t_price, size, side):
+    def add_order(self, instrument_id, price, t_price, sl_price, size, side):
         order = {
             'uuid': str(uuid.uuid1()),
             'type': 'future',  #合约
@@ -119,14 +128,16 @@ class OrderRouter(object):
             'strategy_name': 'future_macd',  #策略名称
             's_price': price,  # 开始价格
             't_price': t_price,  # 目标价格
+            'sl_price': sl_price, # 止损价格
             'e_price': 0,  # 最后价格
+            # 'o_price':
             'side': side,  # buy or sell
             'size': size,  # 目标下单数量，张数
             'status': 'pending',  # 状态 'pending' 'done' 'cancel'
             'stime': datetime.datetime.now(),  #开始时间
             'etime': 0,  #结束时间
             'strategy_status':
-            'start',  #策略状态，start, order_submit, order_filled, p_order_sumbit, p_order_filled, done
+            'start',  #策略状态，start, order_submit, order_filled, p_order_sumbit, p_order_filled, stop_loss,done
             'order': None,  #交易订单信息
             'p_order': None  # 平仓订单信息
         }
@@ -196,16 +207,41 @@ class OrderRouter(object):
             order['strategy_status'] = self.get_next_strategy_status(
                 order['strategy_status'], p_order_info['status'])
 
-        elif strategy_status == 'p_order_sumbit':  #do 检查平仓订单状态
+        elif strategy_status == 'p_order_sumbit':  #do 检查平仓订单状态 
             order_info = self.get_order_info(order['instrument_id'],
                                              order['p_order']['order_id'])
+            # 风控
+            if (self.get_last(order['instrument_id']) <= order['sl_price'] and order['side'] == 'buy') \
+            or (self.get_last(order['instrument_id']) >= order['sl_price'] and order['side'] == 'sell'):
+                self.cancel_order(order['instrument_id'], order_info['order_id'])
+                order['strategy_status'] = 'stop_loss_sumbit'
+            else:
+                order['p_order'] = order_info
+                order['strategy_status'] = self.get_next_strategy_status(
+                    order['strategy_status'], order_info['status'])
+                if order['strategy_status'] == 'p_order_filled':  # 策略订单已经完成
+                    order['e_price'] = order_info['price_avg']
+                    order['strategy_status'] = 'done'
+                    order['status'] = 'done'
+                    order['etime'] = datetime.datetime.now()
+        elif strategy_status == 'stop_loss_sumbit': # 止损
+            _, otype = self.get_order_otype(order['side'])
+            order['strategy_status'] = 'stop_loss_filled'
+            sl_order_info = self.submit_order(
+                client_oid='',
+                otype=otype,
+                instrument_id=order['instrument_id'],
+                price=order['sl_price'],
+                size=order['order']['filled_qty'])
+            order['p_order'] = sl_order_info
+
+        elif strategy_status == 'stop_loss_filled': # 止损
+            order_info = self.get_order_info(order['instrument_id'], order['p_order']['order_id'])
             order['p_order'] = order_info
-            order['strategy_status'] = self.get_next_strategy_status(
-                order['strategy_status'], order_info['status'])
-            if order['strategy_status'] == 'p_order_filled':  # 策略订单已经完成
+            if order_info['status'] == constant.OrderStatus.FULLY_FILLED.value:
                 order['e_price'] = order_info['price_avg']
                 order['strategy_status'] = 'done'
-                order['status'] = 'done'
+                order['status'] = 'stoploss'
                 order['etime'] = datetime.datetime.now()
         else:
             print('err => strategy_status==>', order['strategy_status'])
@@ -233,6 +269,21 @@ class OrderRouter(object):
         return len(self.order_router)
 
 
+class RiskControl(object):
+    def __init__(self):
+        self.stop_loss_rate = 0.01
+
+    def calc_stop_loss_price(self, s_price, otype):
+        if otype == 'buy':
+            return s_price - s_price * self.stop_loss_rate
+        elif otype == 'sell':
+            return s_price + s_price * self.stop_loss_rate
+
+
+    # def check_stop_loss(self, s_price, n_price):
+
+
+
 class FutureSpotStrategy(object):
     def __init__(self):
         # self.mongodb = MongoService(
@@ -243,6 +294,9 @@ class FutureSpotStrategy(object):
         self.order_router = OrderRouter()
         self.future_api = futures_api.FutureAPI(
             config.apikey, config.secretkey, config.password, True)
+        self.ema = ema.EMASignal()
+        self.macd_signal = macd.MacdSignal()
+        self.risk_control =  RiskControl()
 
     def get_kline(self,
                   instrument_id,
@@ -278,35 +332,38 @@ class FutureSpotStrategy(object):
         return float(ticker['last'])
 
     def run(self):
-        # count = 0
         while True:
             order_count = self.order_router.run()
             kline_datas = self.get_kline(
                 instrument_id=self.future_pair, size=300)[200:-1]
             close_datas = [float(k['close']) for k in kline_datas]
-            macd_signal = utils.macd_signal(np.array(close_datas))
-
-            if macd_signal != 'no' and order_count == 0:
-                ticker = self.future_api.get_specific_ticker(
+            ticker = self.future_api.get_specific_ticker(
                     instrument_id=self.future_pair)
-                last = float(ticker['last'])
-                best_ask = float(ticker['best_ask'])
-                best_bid = float(ticker['best_bid'])
+            last = float(ticker['last'])
+            close_datas.append(last)
+            # signal = self.macd_signal.signal(np.array(close_datas))
+            signal, fast_avg, slow_avg = self.ema.signal(np.array(close_datas))
+            print('#####signal=>', signal)
+
+            best_ask = float(ticker['best_ask'])
+            best_bid = float(ticker['best_bid'])
+            print('##best_ask=>',best_ask)
+            print('##best_bid=>',best_bid)
+            # close_datas.append(last)
+            if signal != 'no' and order_count == 0:
                 target_price = utils.calc_profit(
                     price=last,
                     fee_rate=0.0002,
-                    profit_point=0.0003,
-                    side=macd_signal)
-                s_price = best_ask
-                if macd_signal == 'buy':
-                    s_price = best_bid
+                    profit_point=0.001,
+                    side=signal)
+                s_price = best_ask - 0.001
+                if signal == 'buy':
+                    s_price = best_bid + 0.001
+
+                sl_price = self.risk_control.calc_stop_loss_price(s_price, signal)
                 self.order_router.add_order(self.future_pair, s_price,
-                                            target_price, self.order_size,
-                                            macd_signal)
-                # count += 1
-            # if count == 0:
-            # self.order_router.add_order(self.future_pair, 1, 2, self.order_size, 'buy')
-            # count += 1
+                                            target_price, sl_price, self.order_size,
+                                            signal)
             time.sleep(0.5)
 
 
