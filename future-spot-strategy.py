@@ -340,7 +340,7 @@ class FutureSpotStrategy(object):
             ticker = self.future_api.get_specific_ticker(
                     instrument_id=self.future_pair)
             last = float(ticker['last'])
-            close_datas.append(last)
+            # close_datas.append(last)
             # signal = self.macd_signal.signal(np.array(close_datas))
             signal, fast_avg, slow_avg = self.ema.signal(np.array(close_datas))
             print('#####signal=>', signal)
