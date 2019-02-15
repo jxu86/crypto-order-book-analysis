@@ -290,13 +290,17 @@ class FutureSpotStrategy(object):
         #     host=config.mongo_host, port=config.mongo_port)
         self.spot_pair = 'EOS-USDT'
         self.future_pair = 'EOS-USD-190329'
-        self.order_size = 1
+        self.order_size = config.future_order_size
         self.order_router = OrderRouter()
         self.future_api = futures_api.FutureAPI(
             config.apikey, config.secretkey, config.password, True)
         self.ema = ema.EMASignal()
         self.macd_signal = macd.MacdSignal()
         self.risk_control =  RiskControl()
+
+    # load config from mongo
+    def _load_config(self):
+        pass
 
     def get_kline(self,
                   instrument_id,
