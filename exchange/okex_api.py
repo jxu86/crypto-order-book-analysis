@@ -39,7 +39,12 @@ class Exchange(object):
             ret += kline_datas
             send = min(x['timestamp'] for x in kline_datas)
             time.sleep(0.15)
-
+   
+        d = {}
+        for r in ret:
+            d[r['timestamp']] = r
+    
+        ret = list(d.values())
         ret.sort(key=lambda k: (k.get('timestamp', 0)))
         print('ret=>', len(ret))
         return ret

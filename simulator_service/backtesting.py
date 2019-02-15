@@ -123,7 +123,7 @@ class SimulationEngine(object):
         return csv_dict
     
     def _load_mongo(self):
-        data = self._mongodb.find(self._mongodb.kline_1min, query={'timestamp':{'$gte':'2019-02-10T00:00:00.000Z','$lte':'2019-02-14T00:00:00.000Z'}}) # 
+        data = self._mongodb.find(self._mongodb.kline_1min, query={'timestamp':{'$gte':'2019-02-13T08:00:00.000Z'}}) # 
         for d in data:
             d['datetime'] = datetime.datetime.strptime(d['timestamp'], '%Y-%m-%dT%H:%M:%S.%fZ')
         print('##data len ==>', len(data))
@@ -214,7 +214,7 @@ class SimulationEngine(object):
         time = bar['datetime']
         signal, fast_avg, slow_avg= EMASignal().signal(np.array(close_datas))
         # signal, fast_avg, slow_avg = MacdSignal().signal(np.array(close_datas))
-        # print('####len self._broker.order_router=>',len(self._broker.order_router))
+
         for order in self._broker.order_router: # 止盈
             o_price = order['price'] 
             side = order['side']
@@ -224,8 +224,6 @@ class SimulationEngine(object):
                                         fee_rate=0.0002,
                                         profit_point=0.0008,
                                         side=side)
-
-
             if (side == 'buy' and target_price <= close) or  (side == 'sell' and target_price >= close):
                 order_info = self._broker.close_order(order_id, close, time)
 
@@ -234,10 +232,30 @@ class SimulationEngine(object):
         # signal = MacdSignal().signal(np.array(close_datas))
         if signal == 'buy' and self._broker.get_order_num() <= 0:
             order_info = self._broker.sumbit_order(self.future_instrument_id, close, 100, time, 'buy')
-            self.order_id = order_info['order_id']
+            # self.order_id = order_info['order_id']
+
+        # if signal == 'sell' and self._broker.get_order_num() <= 1:
+        #     order_info = self._broker.sumbit_order(self.future_instrument_id, close, 100, time, 'sell')
             
-        # elif signal == 'sell' and self._broker.get_order_num() >= 1: # 平仓
-            # self._broker.close_order(self.order_id, close, time)
+        # elif signal == 'close_buy' and self._broker.get_order_num() >= 1: 
+        #     for order in self._broker.order_router: # 止盈
+        #         o_price = order['price'] 
+        #         side = order['side']
+        #         order_id = order['order_id']
+        #         if side == 'buy':
+        #             self._broker.close_order(order_id, close, time)
+
+        # elif signal == 'close_sell' and self._broker.get_order_num() >= 1: 
+        #     for order in self._broker.order_router: # 止盈
+        #         o_price = order['price'] 
+        #         side = order['side']
+        #         order_id = order['order_id']
+        #         if side == 'sell':
+        #             self._broker.close_order(order_id, close, time)
+
+            # order_info = self._broker.close_order(self.order_id, close, time)
+        #     order_info = self._broker.sumbit_order(self.future_instrument_id, close, 100, time, 'sell')
+            # self.order_id = order_info['order_id']
 
         
         # if signal == 'buy':
