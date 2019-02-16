@@ -291,6 +291,7 @@ class FutureSpotStrategy(object):
         self.spot_pair = 'EOS-USDT'
         self.future_pair = 'EOS-USD-190329'
         self.order_size = config.future_order_size
+        self.max_running_order = config.max_running_order
         self.order_router = OrderRouter()
         self.future_api = futures_api.FutureAPI(
             config.apikey, config.secretkey, config.password, True)
@@ -298,7 +299,7 @@ class FutureSpotStrategy(object):
         self.macd_signal = macd.MacdSignal()
         self.risk_control =  RiskControl()
 
-    # load config from mongo
+    # load config from
     def _load_config(self):
         pass
 
@@ -354,7 +355,7 @@ class FutureSpotStrategy(object):
             print('##best_ask=>',best_ask)
             print('##best_bid=>',best_bid)
             # close_datas.append(last)
-            if signal != 'no' and order_count == 0:
+            if signal != 'no' and order_count < self.max_running_order:
                 target_price = utils.calc_profit(
                     price=last,
                     fee_rate=0.0002,

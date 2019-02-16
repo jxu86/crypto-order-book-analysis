@@ -1,3 +1,5 @@
+import sys
+print('sys=>', sys.path)
 import okex.spot_api as spot_api
 import okex.futures_api as futures_api
 import config
