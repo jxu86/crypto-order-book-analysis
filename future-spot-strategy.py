@@ -271,7 +271,7 @@ class OrderRouter(object):
 
 class RiskControl(object):
     def __init__(self):
-        self.stop_loss_rate = 0.01
+        self.stop_loss_rate = config.stop_loss_rate
 
     def calc_stop_loss_price(self, s_price, otype):
         if otype == 'buy':
