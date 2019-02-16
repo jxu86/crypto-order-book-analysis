@@ -139,7 +139,9 @@ class OrderRouter(object):
             'strategy_status':
             'start',  #策略状态，start, order_submit, order_filled, p_order_sumbit, p_order_filled, stop_loss,done
             'order': None,  #交易订单信息
-            'p_order': None  # 平仓订单信息
+            'p_order': None,  # 平仓订单信息
+            'created_at': datetime.datetime.now(),
+            'updated_at': datetime.datetime.now()
         }
         self.order_router.append(order)
         self.save_order(order)
@@ -339,6 +341,15 @@ class FutureSpotStrategy(object):
     def run(self):
         while True:
             order_count = self.order_router.run()
+            should_order_time = 0
+            if len(self.order_router.order_router) > 0:
+                last_order_time = min(x['stime'] for x in self.order_router.order_router)
+                should_order_time = last_order_time + datetime.timedelta(minutes=1)
+
+            now_time = datetime.datetime.now()
+            print('###should_order_time=>', should_order_time)
+            print('###now_time=>', now_time)
+
             kline_datas = self.get_kline(
                 instrument_id=self.future_pair, size=300)[200:-1]
             close_datas = [float(k['close']) for k in kline_datas]
@@ -355,7 +366,7 @@ class FutureSpotStrategy(object):
             print('##best_ask=>',best_ask)
             print('##best_bid=>',best_bid)
             # close_datas.append(last)
-            if signal != 'no' and order_count < self.max_running_order:
+            if signal != 'no' and order_count < self.max_running_order and now_time > should_order_time:
                 target_price = utils.calc_profit(
                     price=last,
                     fee_rate=0.0002,
