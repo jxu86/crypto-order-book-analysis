@@ -341,7 +341,7 @@ class FutureSpotStrategy(object):
     def run(self):
         while True:
             order_count = self.order_router.run()
-            should_order_time = 0
+            should_order_time = datetime.datetime.now() - datetime.timedelta(minutes=5) # init time
             if len(self.order_router.order_router) > 0:
                 last_order_time = min(x['stime'] for x in self.order_router.order_router)
                 should_order_time = last_order_time + datetime.timedelta(minutes=1)
