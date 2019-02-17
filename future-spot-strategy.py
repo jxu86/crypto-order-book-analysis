@@ -344,7 +344,7 @@ class FutureSpotStrategy(object):
             should_order_time = datetime.datetime.now() - datetime.timedelta(minutes=5) # init time
             if len(self.order_router.order_router) > 0:
                 last_order_time = min(x['stime'] for x in self.order_router.order_router)
-                should_order_time = last_order_time + datetime.timedelta(minutes=1)
+                should_order_time = last_order_time + datetime.timedelta(minutes=3)
 
             now_time = datetime.datetime.now()
             print('###should_order_time=>', should_order_time)

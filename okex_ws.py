@@ -18,6 +18,7 @@ import zlib
 import ccxt
 import threading
 import time
+import utils
 # from factory import Factory, Pairs, PingPong, Timer, to_statsd
 
 # from okex_websocket_module import (
@@ -238,7 +239,7 @@ class OKExFutureTask(object):
         self.init_data = init_data or []
 
     def pack(self, x, y=None):
-
+        
         def _to_list(x):
             return x if isinstance(x, list) else [x]
 
@@ -319,6 +320,18 @@ class OKExFutureDepthTask(OKExFutureTask):
     def save(cls, data):
         print('data==>', type(data))
 
+
+class OKExFutureTradeTask(OKExFutureTask):
+
+    # collection = OKExOrderBooks
+
+    @classmethod
+    def parse(cls, data):
+        print('parse ==>trade data=>', data)
+
+    @classmethod
+    def save(cls, data):
+        print('trade data==>', type(data))
 
 class OKExOrderBookTask(OKExSpotTask):
 
@@ -461,6 +474,8 @@ class OKExWebSocket(object):
         # Statsd support
         self._stats_obj = stats
         self._stats_timer = None
+        self._trade_buy_vol = []
+        self._trade_sell_vol = []
 
     def start_timers(self):
         # Ping-pong
@@ -510,7 +525,8 @@ class OKExWebSocket(object):
                 return getattr(task.__class__, handler)
 
     def on_hello(self, msg):
-        pass
+        print('#######on_hello=>msg==>', msg)
+        # pass
         # result = re_findone(r'"result":(\w+)', msg)
 
         # if result == 'true':
@@ -532,9 +548,10 @@ class OKExWebSocket(object):
 
         # Send inital subscription requests to websocket server
         # for task in self.tasks:
-        #     #LOG.info('Say hello to: {channel}'.format(channel=task.channel))
-        #     ws.send(task.hello)
-        ws.send(json.dumps({"op": "subscribe", "args": ["futures/depth5:BTC-USD-190329"]}))
+        #     task.hello()
+            #LOG.info('Say hello to: {channel}'.format(channel=task.channel))
+            # ws.send(task.hello)
+        ws.send(json.dumps({"op": "subscribe", "args": ["futures/trade:EOS-USD-190329"]}))
         
 
     @staticmethod
@@ -549,8 +566,15 @@ class OKExWebSocket(object):
     def on_message(self, ws, msg):
         print('##on_message')
         # Ping-Pong
+        # print('msg=====>', msg)
         msg = self._decompress(msg) if isinstance(msg, bytes) else msg
         print('msg==>', msg)
+        data = eval(msg)
+        if data.get('event') == 'subscribe':
+            return
+        self.calc_trade_vol(data)
+
+        # print('data type==>', data, type(data))
         # if msg == '{"event":"pong"}':
         #     return self.pingpong.on_pong(msg)
 
@@ -567,6 +591,35 @@ class OKExWebSocket(object):
         #     return
 
         # handler(data)
+    def calc_trade_vol(self, data):
+  
+        if 'table' not in data.keys() or data['table'] != 'futures/trade':
+            return
+
+        trade_data = data['data'][0]
+        trade_data['datetime'] = utils.utcstr_to_datetime(trade_data['timestamp'])
+        trade_data['timestamp'] = trade_data['datetime'].timestamp()
+        if trade_data['side'] == 'buy':
+            self._trade_buy_vol.append(trade_data)
+        elif trade_data['side'] == 'sell':
+            self._trade_sell_vol.append(trade_data)
+
+        print('####trade_data=>', trade_data)
+        if len(self._trade_buy_vol)>1000:
+            self._trade_buy_vol.pop(0)
+        if len(self._trade_sell_vol)>1000:
+            self._trade_sell_vol.pop(0)
+
+        now_time = time.time()
+        calc_time = now_time - 60
+        print('now_time=>',now_time)
+        print('####calc_time=>',calc_time)
+        buy_qty = sum([t['qty'] for t in self._trade_buy_vol if t['timestamp'] > calc_time])
+        sell_qty = sum([t['qty'] for t in self._trade_sell_vol if t['timestamp'] > calc_time])
+        print('###buy_qty=>', buy_qty)
+        print('###sell_qty=>', sell_qty)
+
+        
 
     def on_error(self, ws, error):
         traceback.print_exc()
@@ -660,9 +713,13 @@ if __name__ == '__main__':
     pairs = ['eos_usdt']
     depth = 20
 
-    future_order_book_task = OKExFutureDepthTask(
+    # future_order_book_task = OKExFutureDepthTask(
+    #     op='subscribe',
+    #     args=["futures/depth5:EOS-USD-190329"])
+
+    future_trade_task = OKExFutureTradeTask(
         op='subscribe',
-        args=["futures/depth5:EOS-USD-190329"])
+        args=["futures/trade:EOS-USD-190329"])
     # order_book_task = OKExOrderBookTask(
     #     event='addChannel',
     #     channel='ok_sub_spot_{x}_depth_{y}',
@@ -690,7 +747,7 @@ if __name__ == '__main__':
     # job_list = [kline1_task, kline5_task, klined_task, klinew_task] if args.method == 'kline' else [order_book_task,
     #                                                                                                 deal_task]
 
-    job_list = [future_order_book_task]
+    job_list = [future_trade_task]
     # Run task manager
     ws = OKExWebSocket(
         url, job_list,
