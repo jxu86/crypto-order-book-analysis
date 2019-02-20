@@ -11,6 +11,7 @@ import uuid
 import constant
 import signals.macd as macd
 import signals.ema as ema
+import signals.kdj as kdj
 # TODO 
 # 强行平仓止损
 # 撤单处理
@@ -137,7 +138,7 @@ class OrderRouter(object):
             'stime': datetime.datetime.now(),  #开始时间
             'etime': 0,  #结束时间
             'strategy_status':
-            'start',  #策略状态，start, order_submit, order_filled, p_order_sumbit, p_order_filled, stop_loss,done
+            'start',  #策略状态，start, order_submit, order_filled, p_order_sumbit, p_order_filled, stop_loss,done, cancel
             'order': None,  #交易订单信息
             'p_order': None,  # 平仓订单信息
             'created_at': datetime.datetime.now(),
@@ -152,7 +153,9 @@ class OrderRouter(object):
               current_status)
         print('##########get_next_strategy_status=>order_status==>',
               order_status)
-        if current_status == 'start' or current_status == 'order_filled':
+        if order_status == constant.OrderStatus.CANCELED.value: # 取消订单
+            status = 'cancel'
+        elif current_status == 'start' or current_status == 'order_filled':
             status = self.next_strategy_status(current_status)
         elif self.strategy_status.index(
                 current_status
@@ -245,9 +248,13 @@ class OrderRouter(object):
                 order['strategy_status'] = 'done'
                 order['status'] = 'stoploss'
                 order['etime'] = datetime.datetime.now()
+        elif strategy_status == 'cancel':
+            order['strategy_status'] = 'cancel'
+            order['status'] = 'cancel'
+
         else:
             print('err => strategy_status==>', order['strategy_status'])
-
+            
         return order
 
     def run(self):
@@ -298,6 +305,7 @@ class FutureSpotStrategy(object):
         self.future_api = futures_api.FutureAPI(
             config.apikey, config.secretkey, config.password, True)
         self.ema = ema.EMASignal()
+        self.kdj = kdj.KDJignal()
         self.macd_signal = macd.MacdSignal()
         self.risk_control =  RiskControl()
 
@@ -358,8 +366,12 @@ class FutureSpotStrategy(object):
             last = float(ticker['last'])
             # close_datas.append(last)
             # signal = self.macd_signal.signal(np.array(close_datas))
-            signal, fast_avg, slow_avg = self.ema.signal(np.array(close_datas))
+            # signal, fast_avg, slow_avg = self.ema.signal(np.array(close_datas))
+
+            signal, slowk, slowd = self.kdj.signal(kline_datas)
             print('#####signal=>', signal)
+            print('#####slowk=>', slowk)
+            print('#####slowd=>', slowd)
 
             best_ask = float(ticker['best_ask'])
             best_bid = float(ticker['best_bid'])
@@ -370,7 +382,7 @@ class FutureSpotStrategy(object):
                 target_price = utils.calc_profit(
                     price=last,
                     fee_rate=0.0002,
-                    profit_point=0.001,
+                    profit_point=0.0006,
                     side=signal)
                 s_price = best_ask - 0.001
                 if signal == 'buy':

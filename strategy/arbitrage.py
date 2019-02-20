@@ -1,5 +1,3 @@
-import sys
-print('sys=>', sys.path)
 import okex.spot_api as spot_api
 import okex.futures_api as futures_api
 import config
@@ -12,11 +10,12 @@ import time
 class Strategy(object):
     def __init__(self):
         self.future_instrument_id = 'EOS-USD-190329'
+        # self.future_instrument_id = 'EOS-USD-190301'
         self.spot_instrument_id = 'EOS-USDT'
         self.spot_base = 'EOS'
         self.spot_quote = 'USDT'
-        self.spread_rate = 0.031
-        self.close_spread_rate = 0.02
+        self.spread_rate = 0.0256
+        self.close_spread_rate = 0.023
         self.future_size = 1
         self.spot_api = spot_api.SpotAPI(config.jxukalengo_apikey, config.jxukalengo_secretkey, config.jxukalengo_passphrase, True)
         self.future_api = futures_api.FutureAPI(config.jxukalengo_apikey, config.jxukalengo_secretkey, config.jxukalengo_passphrase, True)
@@ -86,7 +85,7 @@ class Strategy(object):
                      instrument_id,
                      price,
                      size,
-                     match_price='0',
+                     match_price='1',
                      leverage='10',
                      timeout=20,
                      wait_flag=False):
@@ -121,7 +120,7 @@ class Strategy(object):
                      size,
                      notional,
                      timeout=20,
-                     wait_flag=False):
+                     wait_flag=True):
         try:
             order_info = self.spot_api.take_order(
                 client_oid=client_oid,
@@ -135,15 +134,25 @@ class Strategy(object):
             print('#######submit_spot_order=>e==>')
 
         order_id = order_info['order_id']
-        time.sleep(0.1)
+        time.sleep(0.5)
         print('#####instrument_id=>', instrument_id)
         print('#####order_id=>', order_id)
-        order = self.spot_api.get_order_info(order_id, instrument_id)
-        while wait_flag: 
-            time.sleep(0.5)
+        try:
             order = self.spot_api.get_order_info(order_id, instrument_id)
-            if order['status'] == 'filled':  #部分成交 全部成交 撤单
-                return order
+            print('spot order2==>', order)
+        except:
+            print('spot read order info err')
+
+        while wait_flag: 
+            time.sleep(0.2)
+            # order = self.spot_api.get_order_info(order_id, instrument_id)
+            try:
+                order = self.spot_api.get_order_info(order_id, instrument_id)
+                if order['status'] == 'filled':  #部分成交 全部成交 撤单
+                    return order
+            except:
+                print('spot read order info err')
+            
         return order
 
 
@@ -240,17 +249,20 @@ class Strategy(object):
         print('########spot_order_info=>', spot_order_info)
 
     def run(self):
+        # order = self.spot_api.get_order_info('2341139016915968', 'EOS-USDT')
+        # print('#order==>', order)
+        # print('#order type==>', type(order))
         while True:
             # 已经下单，等平仓
             if self.is_trade_complete() == True:
-                if self.is_close_order():
-                    print('###################is_close_order')
-                    self.close_order()
+                # if self.is_close_order():
+                #     print('###################is_close_order')
+                #     self.close_order()
                 print('########wait close order')
             else:
                 sig = self.signal() # 等待开仓信号
-                if  sig != 'no': 
-                    self.make_order(sig)
+                # if  sig != 'no': 
+                #     self.make_order(sig)
             time.sleep(1)
 
 def main():
@@ -264,4 +276,12 @@ if __name__ == '__main__':
     main()
 
     # 43.6039 EOS
+    # 5.1236+38.5140
 
+
+
+    #38.43713115
+    #5.1121
+    # (0.0048*2.9375-(0.01537311+0.0153733)*0.15)/2.9375 = 0.0032299705531914883 EOS
+
+    # 38.46803115+5.0876 = 43.55563115

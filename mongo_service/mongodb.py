@@ -12,6 +12,7 @@ class MongoService(object):
         self.order_router = self.db.order_router
         self.kline_1min = self.db.kline_1min
         self.kline_5min = self.db.kline_5min
+        self.swap_funding_rate = self.db.swap_funding_rate
 
     def update(self, collection, query, udata, upsert=True):
         return collection.update(query, udata, upsert=upsert)

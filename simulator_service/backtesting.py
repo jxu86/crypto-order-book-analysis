@@ -3,6 +3,7 @@ import csv
 from mongo_service.mongodb import MongoService
 from signals.macd import MacdSignal
 from signals.ema import EMASignal
+from signals.kdj import KDJignal
 import config
 import uuid 
 import datetime
@@ -123,7 +124,7 @@ class SimulationEngine(object):
         return csv_dict
     
     def _load_mongo(self):
-        data = self._mongodb.find(self._mongodb.kline_1min, query={'timestamp':{'$gte':'2019-02-13T08:00:00.000Z'}}) # 
+        data = self._mongodb.find(self._mongodb.kline_1min, query={'timestamp':{'$gte':'2019-02-15T00:00:00.000Z'}}) # 
         for d in data:
             d['datetime'] = datetime.datetime.strptime(d['timestamp'], '%Y-%m-%dT%H:%M:%S.%fZ')
         print('##data len ==>', len(data))
@@ -208,6 +209,39 @@ class SimulationEngine(object):
 
 
     def strategy(self, bar):
+        h_data = self.get_data(limit=30)
+
+        close = float(bar['close'])
+        time = bar['datetime']
+        signal, slowk, slowd = KDJignal().signal(h_data)
+
+        for order in self._broker.order_router: # 止盈
+            o_price = order['price'] 
+            side = order['side']
+            order_id = order['order_id']
+            target_price = utils.calc_profit(
+                                        price=o_price,
+                                        fee_rate=0.0002,
+                                        profit_point=0.0006,
+                                        side=side)
+            if (side == 'buy' and target_price <= close) or  (side == 'sell' and target_price >= close):
+                order_info = self._broker.close_order(order_id, close, time)
+
+        if signal == 'buy' and self._broker.get_order_num() <= 10:
+            order_info = self._broker.sumbit_order(self.future_instrument_id, close, 100, time, 'buy')
+
+        if signal == 'sell' and self._broker.get_order_num() <= 10:
+            order_info = self._broker.sumbit_order(self.future_instrument_id, close, 100, time, 'sell')
+
+        self.indicate.append({
+            'datetime': bar['datetime'],
+            'fast_avg': slowk,
+            'slow_avg': slowd
+        })
+
+        
+
+    def strategy_ema(self, bar):
         h_data = self.get_data(limit=101)
         close_datas = [float(k['close']) for k in h_data]
         close = float(bar['close'])
@@ -232,10 +266,11 @@ class SimulationEngine(object):
         # signal = MacdSignal().signal(np.array(close_datas))
         if signal == 'buy' and self._broker.get_order_num() <= 0:
             order_info = self._broker.sumbit_order(self.future_instrument_id, close, 100, time, 'buy')
-            # self.order_id = order_info['order_id']
 
-        # if signal == 'sell' and self._broker.get_order_num() <= 1:
-        #     order_info = self._broker.sumbit_order(self.future_instrument_id, close, 100, time, 'sell')
+        if signal == 'sell' and self._broker.get_order_num() <= 1:
+            order_info = self._broker.sumbit_order(self.future_instrument_id, close, 100, time, 'sell')
+
+        
             
         # elif signal == 'close_buy' and self._broker.get_order_num() >= 1: 
         #     for order in self._broker.order_router: # 止盈
