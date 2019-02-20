@@ -111,3 +111,5 @@ venv.bak/
 config.py
 
 data/
+
+*.html

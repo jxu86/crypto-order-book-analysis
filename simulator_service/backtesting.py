@@ -124,7 +124,7 @@ class SimulationEngine(object):
         return csv_dict
     
     def _load_mongo(self):
-        data = self._mongodb.find(self._mongodb.kline_1min, query={'timestamp':{'$gte':'2019-02-15T00:00:00.000Z'}}) # 
+        data = self._mongodb.find(self._mongodb.kline_1min, query={'timestamp':{'$gte':'2019-02-10T00:00:00.000Z'}}) # 
         for d in data:
             d['datetime'] = datetime.datetime.strptime(d['timestamp'], '%Y-%m-%dT%H:%M:%S.%fZ')
         print('##data len ==>', len(data))
@@ -209,8 +209,9 @@ class SimulationEngine(object):
 
 
     def strategy(self, bar):
-        h_data = self.get_data(limit=30)
-
+        h_data = self.get_data(limit=100)
+        if len(h_data) < 100:
+            return
         close = float(bar['close'])
         time = bar['datetime']
         signal, slowk, slowd = KDJignal().signal(h_data)
@@ -260,8 +261,6 @@ class SimulationEngine(object):
                                         side=side)
             if (side == 'buy' and target_price <= close) or  (side == 'sell' and target_price >= close):
                 order_info = self._broker.close_order(order_id, close, time)
-
-
 
         # signal = MacdSignal().signal(np.array(close_datas))
         if signal == 'buy' and self._broker.get_order_num() <= 0:
@@ -326,15 +325,22 @@ class SimulationEngine(object):
         trade_close = pd.Series(
             index=[p['updated_at'] for p in self._broker.order_history if p['status'] == 'closed'],
             data=[p['c_price'] for p in self._broker.order_history if p['status'] == 'closed'])
-    
+        
+        layout = go.Layout(
+            xaxis = dict(domain = [0.1,0.9]),
+            yaxis = dict(title = 'amount',titlefont = dict(color = 'blue'),tickfont = dict(color = 'blue')),
+            yaxis2 = dict(title = 'alpha',anchor = 'free',overlaying = 'y',side = 'right',position = 1),
+            yaxis3 = dict(title = 'total_base',anchor = 'free',overlaying = 'y',position = 1,titlefont = dict(color = 'red'),tickfont = dict(color = 'red')),
+            yaxis4 = dict(title = 'total_quote',anchor = 'free',overlaying = 'y',titlefont = dict(color = 'red'),tickfont = dict(color = 'red'))
+        )
 
         scatter_data.append(go.Scatter(x=dtime, y=closes, name='close'))
-        scatter_data.append(go.Scatter(x=fast_avg.index, y=fast_avg, name='fast_avg'))
-        scatter_data.append(go.Scatter(x=slow_avg.index, y=slow_avg, name='slow_avg'))
+        scatter_data.append(go.Scatter(x=fast_avg.index, y=fast_avg, name='fast_avg', yaxis='y2'))
+        scatter_data.append(go.Scatter(x=slow_avg.index, y=slow_avg, name='slow_avg', yaxis='y2'))
         scatter_data.append(go.Scatter(x=trade_buy.index, y=trade_buy, name='trade_buy', mode = 'markers', marker=dict(color='red')))
         scatter_data.append(go.Scatter(x=trade_close.index, y=trade_close, name='trade_close', mode = 'markers', marker=dict(color='green')))
 
-        fig = go.Figure(data=scatter_data)
+        fig = go.Figure(data=scatter_data, layout=layout)
         py.plot(fig, auto_open=True, filename='tmp-plot.html')
 
 def main():
