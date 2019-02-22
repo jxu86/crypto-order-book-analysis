@@ -40,6 +40,11 @@ def calc_profit(price, fee_rate=0.001, profit_point=0.001, side='buy'):
     else:
         return round(price * (1 - 2 * fee_rate - profit_point), 3)
 
+def calc_future_interest(future_price, spot_price, end_time):
+    t = (end_time - datetime.datetime.now()).days + 1
+    print('t==>', t)
+    return (future_price / spot_price - 1) / t
+
 # def check_profit(a1,a2,b1,b2):
 #     return (a1-a2)/a2+(b2-b1)/b1 -0.006
 

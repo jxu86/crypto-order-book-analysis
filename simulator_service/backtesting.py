@@ -61,7 +61,13 @@ class Broker(object):
             profit = order['c_price'] - order['price']
         if side == 'sell':
             profit = order['price'] - order['c_price']
-        return profit * order['leverage']
+        # print('order=>',order)
+        if order['status'] != 'closed':
+            returns = 0
+        else:
+            returns = profit / min(order['price'], order['c_price'])
+        print('returns=>',returns)
+        return profit * order['leverage'], returns
 
 
             
@@ -91,7 +97,7 @@ class Broker(object):
             if order['status'] != 'closed' and order['status'] != 'cancel':
                 new_order_router.append(order)
             else:
-                order['profit'] = self.calc_profit(order)
+                order['profit'], order['returns'] = self.calc_profit(order)
                 self.order_history.append(order)
         
         self.order_router = new_order_router
@@ -124,9 +130,10 @@ class SimulationEngine(object):
         return csv_dict
     
     def _load_mongo(self):
-        data = self._mongodb.find(self._mongodb.kline_1min, query={'timestamp':{'$gte':'2019-02-10T00:00:00.000Z'}}) # 
+        data = self._mongodb.find(self._mongodb.kline_1min, query={'timestamp':{'$gte':'2019-02-17T00:00:00.000Z'}}) # 
         for d in data:
-            d['datetime'] = datetime.datetime.strptime(d['timestamp'], '%Y-%m-%dT%H:%M:%S.%fZ')
+            # d['datetime'] = datetime.datetime.strptime(d['timestamp'], '%Y-%m-%dT%H:%M:%S.%fZ')
+            d['datetime'] = utils.utcstr_to_datetime(d['timestamp'])
         print('##data len ==>', len(data))
         return data
         
@@ -165,10 +172,13 @@ class SimulationEngine(object):
         
     def returns(self, order_list):
         total_profit = 0
+        returns = 0
         for order in order_list:
             if order['status'] == 'closed':
                 total_profit += order['profit']
-        print('#########returns -->', total_profit)
+                returns += order['returns']
+        print('#########total_profit -->', total_profit)
+        print('#########returns -->', returns)
         return total_profit
 
     def run(self):
@@ -208,7 +218,7 @@ class SimulationEngine(object):
         
 
 
-    def strategy(self, bar):
+    def strategy_kdj(self, bar):
         h_data = self.get_data(limit=100)
         if len(h_data) < 100:
             return
@@ -234,41 +244,54 @@ class SimulationEngine(object):
         if signal == 'sell' and self._broker.get_order_num() <= 10:
             order_info = self._broker.sumbit_order(self.future_instrument_id, close, 100, time, 'sell')
 
-        self.indicate.append({
-            'datetime': bar['datetime'],
-            'fast_avg': slowk,
-            'slow_avg': slowd
-        })
+        # self.indicate.append({
+        #     'datetime': bar['datetime'],
+        #     'fast_avg': slowk,
+        #     'slow_avg': slowd
+        # })
 
         
 
-    def strategy_ema(self, bar):
+    def strategy(self, bar):
         h_data = self.get_data(limit=101)
         close_datas = [float(k['close']) for k in h_data]
         close = float(bar['close'])
         time = bar['datetime']
-        signal, fast_avg, slow_avg= EMASignal().signal(np.array(close_datas))
+        signal, fast_avg, slow_avg= EMASignal(9,30).signal(np.array(close_datas))
         # signal, fast_avg, slow_avg = MacdSignal().signal(np.array(close_datas))
 
-        for order in self._broker.order_router: # 止盈
-            o_price = order['price'] 
-            side = order['side']
-            order_id = order['order_id']
-            target_price = utils.calc_profit(
-                                        price=o_price,
-                                        fee_rate=0.0002,
-                                        profit_point=0.0008,
-                                        side=side)
-            if (side == 'buy' and target_price <= close) or  (side == 'sell' and target_price >= close):
-                order_info = self._broker.close_order(order_id, close, time)
+        # for order in self._broker.order_router: # 止盈
+        #     o_price = order['price'] 
+        #     side = order['side']
+        #     order_id = order['order_id']
+        #     target_price = utils.calc_profit(
+        #                                 price=o_price,
+        #                                 fee_rate=0.0002,
+        #                                 profit_point=0.0008,
+        #                                 side=side)
+        #     if (side == 'buy' and target_price <= close) or  (side == 'sell' and target_price >= close):
+        #         order_info = self._broker.close_order(order_id, close, time)
 
-        # signal = MacdSignal().signal(np.array(close_datas))
-        if signal == 'buy' and self._broker.get_order_num() <= 0:
+        # # signal = MacdSignal().signal(np.array(close_datas))
+
+        if signal == 'buy': # and self._broker.get_order_num() <= 0:
             order_info = self._broker.sumbit_order(self.future_instrument_id, close, 100, time, 'buy')
 
-        if signal == 'sell' and self._broker.get_order_num() <= 1:
-            order_info = self._broker.sumbit_order(self.future_instrument_id, close, 100, time, 'sell')
+            for order in self._broker.order_router: # 止盈
+                o_price = order['price'] 
+                side = order['side']
+                order_id = order['order_id']
+                if side == 'sell':
+                    self._broker.close_order(order_id, close, time)
 
+        elif signal == 'sell': #and self._broker.get_order_num() <= 1:
+            order_info = self._broker.sumbit_order(self.future_instrument_id, close, 100, time, 'sell')
+            for order in self._broker.order_router: # 止盈
+                o_price = order['price'] 
+                side = order['side']
+                order_id = order['order_id']
+                if side == 'buy':
+                    self._broker.close_order(order_id, close, time)
         
             
         # elif signal == 'close_buy' and self._broker.get_order_num() >= 1: 
@@ -319,8 +342,12 @@ class SimulationEngine(object):
             data=[p['slow_avg'] for p in self.indicate])
 
         trade_buy = pd.Series(
-            index=[p['created_at'] for p in self._broker.order_history if p['status'] == 'closed'],
-            data=[p['price'] for p in self._broker.order_history if p['status'] == 'closed'])
+            index=[p['created_at'] for p in self._broker.order_history if p['status'] == 'closed' and p['side'] == 'buy'],
+            data=[p['price'] for p in self._broker.order_history if p['status'] == 'closed' and p['side'] == 'buy'])
+
+        trade_sell = pd.Series(
+            index=[p['created_at'] for p in self._broker.order_history if p['status'] == 'closed' and p['side'] == 'sell'],
+            data=[p['price'] for p in self._broker.order_history if p['status'] == 'closed' and p['side'] == 'sell'])
 
         trade_close = pd.Series(
             index=[p['updated_at'] for p in self._broker.order_history if p['status'] == 'closed'],
@@ -338,6 +365,7 @@ class SimulationEngine(object):
         scatter_data.append(go.Scatter(x=fast_avg.index, y=fast_avg, name='fast_avg', yaxis='y2'))
         scatter_data.append(go.Scatter(x=slow_avg.index, y=slow_avg, name='slow_avg', yaxis='y2'))
         scatter_data.append(go.Scatter(x=trade_buy.index, y=trade_buy, name='trade_buy', mode = 'markers', marker=dict(color='red')))
+        scatter_data.append(go.Scatter(x=trade_sell.index, y=trade_sell, name='trade_sell', mode = 'markers', marker=dict(color='blue')))
         scatter_data.append(go.Scatter(x=trade_close.index, y=trade_close, name='trade_close', mode = 'markers', marker=dict(color='green')))
 
         fig = go.Figure(data=scatter_data, layout=layout)

@@ -3,9 +3,9 @@ import talib
 import numpy as np
 
 class EMASignal(object):
-    def __init__(self):
-        self.fast = 7
-        self.slow = 30
+    def __init__(self, fast=9, slow=30):
+        self.fast = fast
+        self.slow = slow
 
     def signal(self, price_list):
         sig = 'no'

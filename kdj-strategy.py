@@ -135,8 +135,7 @@ class OrderRouter(object):
             'status': 'pending',  # 状态 'pending' 'done' 'cancel'
             'stime': datetime.datetime.now(),  #开始时间
             'etime': 0,  #结束时间
-            'strategy_status':
-            'start',  #策略状态，start, order_submit, order_filled, p_order_sumbit, p_order_filled, stop_loss,done, cancel
+            'strategy_status': 'start',  #策略状态，start, order_submit, order_filled, p_order_sumbit, p_order_filled, stop_loss,done, cancel
             'order': None,  #交易订单信息
             'p_order': None,  # 平仓订单信息
             'created_at': datetime.datetime.now(),
@@ -361,8 +360,6 @@ class FutureSpotStrategy(object):
                     instrument_id=self.future_pair)
             last = float(ticker['last'])
             # close_datas.append(last)
-            # signal = self.macd_signal.signal(np.array(close_datas))
-            # signal, fast_avg, slow_avg = self.ema.signal(np.array(close_datas))
 
             signal, slowk, slowd = self.kdj.signal(kline_datas)
             print('#####signal=>', signal)
@@ -380,7 +377,7 @@ class FutureSpotStrategy(object):
                     fee_rate=0.0002,
                     profit_point=0.0006,
                     side=signal)
-                s_price = best_ask - 0.001
+                s_price = best_ask - 0.008
                 if signal == 'buy':
                     s_price = best_bid + 0.001
 
