@@ -18,7 +18,8 @@ class EMASignal(object):
 
         # distance_avg = np.array(fast_avg) - np.array(slow_avg)
         
-
+        # print('slow_avg=>',slow_avg)
+        # print('fast_avg=>',fast_avg)
         # 均线下穿，做空
         if slow_avg[-2] < fast_avg[-2] and slow_avg[-1] >= fast_avg[-1]:
             sig = 'sell'

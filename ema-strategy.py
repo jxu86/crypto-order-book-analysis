@@ -137,31 +137,42 @@ class Strategy(object):
 
             # if signal != 'no' and long_avail_qty < self.max_running_order #and now_time > should_order_time:
 
+        
             if signal == 'buy' and long_avail_qty < self.max_running_order :
-                self.order_router.submit_order( client_oid='',
-                                                otype='1',
-                                                instrument_id=self.future_pair,
-                                                price=best_bid+0.001,
-                                                size=1)
+                
                 if short_avail_qty != 0: 
                     self.order_router.submit_order( client_oid='',
                                                     otype='4',
                                                     instrument_id=self.future_pair,
                                                     price=best_bid+0.001,
-                                                    size=short_avail_qty)
-                    
-            elif signal == 'sell' and short_avail_qty < self.max_running_order:
+                                                    match_price='1',
+                                                    size=int(short_avail_qty))
+                                                    
                 self.order_router.submit_order( client_oid='',
-                                                otype='2',
+                                                otype='1',
                                                 instrument_id=self.future_pair,
-                                                price=best_ask-0.001,
-                                                size=1)
+                                                price=best_bid+0.001,
+                                                match_price='1',
+                                                size=self.order_size,
+                                                wait_flag=True)
+
+            elif signal == 'sell' and short_avail_qty < self.max_running_order:
                 if long_avail_qty != 0:
                     self.order_router.submit_order( client_oid='',
                                                     otype='3',
                                                     instrument_id=self.future_pair,
                                                     price=best_ask-0.001,
-                                                    size=long_avail_qty)
+                                                    match_price='1',
+                                                    size=int(long_avail_qty))
+
+                self.order_router.submit_order( client_oid='',
+                                                otype='2',
+                                                instrument_id=self.future_pair,
+                                                price=best_ask-0.001,
+                                                match_price='1',
+                                                size=self.order_size,
+                                                wait_flag=True)
+                
                     
             time.sleep(0.5)
                                                 
