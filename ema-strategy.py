@@ -35,6 +35,7 @@ class Strategy(object):
             config.sub_apikey, config.sub_secretkey, config.sub_password, True)
         self.ema = ema.EMASignal()
         self.risk_control = risk.RiskControl()
+        self.last_order_time = datetime.datetime.now()
 
     # load config from
     def _load_config(self):
@@ -134,31 +135,34 @@ class Strategy(object):
             print('#####long_avail_qty=>', long_avail_qty)
             print('#####short_avail_qty=>', short_avail_qty)
 
-            # if signal != 'no' and order_count < self.max_running_order and now_time > should_order_time:
-            #     if signal == 'buy':
-            #         self.order_router.submit_order( client_oid='',
-            #                                         otype='1',
-            #                                         instrument_id=self.future_pair,
-            #                                         price=best_bid+0.001,
-            #                                         size=1)
-            #         if long_avail_qty != 0: 
-            #             self.order_router.submit_order( client_oid='',
-            #                                             otype='3',
-            #                                             instrument_id=self.future_pair,
-            #                                             price=best_ask-0.001,
-            #                                             size=long_avail_qty)
-            #     elif signal == 'sell':
-            #         self.order_router.submit_order( client_oid='',
-            #                                         otype='2',
-            #                                         instrument_id=self.future_pair,
-            #                                         price=best_ask-0.001,
-            #                                         size=1)
-            #         if short_avail_qty != 0:
-            #             self.order_router.submit_order( client_oid='',
-            #                                             otype='4',
-            #                                             instrument_id=self.future_pair,
-            #                                             price=best_bid+0.001,
-            #                                             size=short_avail_qty)
+            # if signal != 'no' and long_avail_qty < self.max_running_order #and now_time > should_order_time:
+
+            if signal == 'buy' and long_avail_qty < self.max_running_order :
+                self.order_router.submit_order( client_oid='',
+                                                otype='1',
+                                                instrument_id=self.future_pair,
+                                                price=best_bid+0.001,
+                                                size=1)
+                if short_avail_qty != 0: 
+                    self.order_router.submit_order( client_oid='',
+                                                    otype='4',
+                                                    instrument_id=self.future_pair,
+                                                    price=best_bid+0.001,
+                                                    size=short_avail_qty)
+                    
+            elif signal == 'sell' and short_avail_qty < self.max_running_order:
+                self.order_router.submit_order( client_oid='',
+                                                otype='2',
+                                                instrument_id=self.future_pair,
+                                                price=best_ask-0.001,
+                                                size=1)
+                if long_avail_qty != 0:
+                    self.order_router.submit_order( client_oid='',
+                                                    otype='3',
+                                                    instrument_id=self.future_pair,
+                                                    price=best_ask-0.001,
+                                                    size=long_avail_qty)
+                    
             time.sleep(0.5)
                                                 
 
