@@ -14,7 +14,7 @@ class OrderRouter(object):
             host=config.mongo_host, port=config.mongo_port)
         self.order_router = self.get_pending_order()
         self.future_api = futures_api.FutureAPI(
-            config.apikey, config.secretkey, config.password, True)
+            config.sub_apikey, config.sub_secretkey, config.sub_password, True)
         self.strategy_status = [
             'start', 'order_submit', 'order_filled', 'p_order_sumbit',
             'p_order_filled', 'stop_loss', 'done'
@@ -26,6 +26,15 @@ class OrderRouter(object):
                                 {'status': 'pending'})
         print('##get_pending_order=>ret==>', ret)
         return ret
+
+    def get_future_position(self, instrument_id, margin_mode='crossed'):
+        position = self.future_api.get_specific_position(instrument_id)
+        # print('######position=>', position)
+        if position['result'] == True:
+            for h in position['holding']:
+                if h['instrument_id'] == instrument_id and h['margin_mode'] == margin_mode:
+                    return h
+        return {}
 
     # 下单程序
     # client_oid 由您设置的订单ID来识别您的订单
@@ -121,6 +130,7 @@ class OrderRouter(object):
                   strategy_name='future_ema'):
         order = {
             'uuid': str(uuid.uuid1()),
+            'order_type':'wait_close', # wait_close, no_close 
             'type': 'future',  #合约
             'instrument_id': instrument_id,
             'strategy_name': strategy_name,  #策略名称

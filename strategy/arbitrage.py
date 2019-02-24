@@ -9,8 +9,8 @@ import time
 
 class Strategy(object):
     def __init__(self):
-        self.future_instrument_id = 'EOS-USD-190329'
-        # self.future_instrument_id = 'EOS-USD-190301'
+        # self.future_instrument_id = 'EOS-USD-190329'
+        self.future_instrument_id = 'EOS-USD-190301'
         self.spot_instrument_id = 'EOS-USDT'
         self.spot_base = 'EOS'
         self.spot_quote = 'USDT'

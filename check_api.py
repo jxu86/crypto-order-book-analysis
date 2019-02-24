@@ -26,7 +26,7 @@ class CheckApi(object):
             print('ticker err')
 
     def check_submit_order(self):
-        try:
+        try:  
             order = self.future_api.take_order(
                     client_oid='',
                     instrument_id=self.instrument_id,
@@ -45,7 +45,7 @@ class CheckApi(object):
         if self.ctype == 'ticker':
             while True:
                 self.check_ticker()
-                time.sleep(0.105)
+                time.sleep(0.200)
         elif self.ctype == 'order':
             while True:
                 self.check_submit_order()
@@ -81,3 +81,12 @@ if __name__ == '__main__':
 # python check_api.py --instrument_id=EOS-USD-190301 --ctype=order
 # python check_api.py --instrument_id=EOS-USD-190308 --ctype=order
 # python check_api.py --instrument_id=EOS-USD-190329 --ctype=order
+
+# pm2 start check_api.py --name=EOS-USD-190301-ticker -- --instrument_id=EOS-USD-190301 --ctype=ticker
+# pm2 start check_api.py --name=EOS-USD-190308-ticker -- --instrument_id=EOS-USD-190308 --ctype=ticker
+# pm2 start check_api.py --name=EOS-USD-190329-ticker -- --instrument_id=EOS-USD-190329 --ctype=ticker
+
+# pm2 start check_api.py --name=EOS-USD-190301-ticker -- --instrument_id=EOS-USD-190301 --ctype=order
+# pm2 start check_api.py --name=EOS-USD-190308-ticker -- --instrument_id=EOS-USD-190308 --ctype=order
+# pm2 start check_api.py --name=EOS-USD-190329-ticker -- --instrument_id=EOS-USD-190329 --ctype=order
+

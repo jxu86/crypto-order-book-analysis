@@ -32,7 +32,7 @@ class Strategy(object):
         self.max_running_order = config.max_running_order
         self.order_router = order.OrderRouter()
         self.future_api = futures_api.FutureAPI(
-            config.apikey, config.secretkey, config.password, True)
+            config.sub_apikey, config.sub_secretkey, config.sub_password, True)
         self.ema = ema.EMASignal()
         self.risk_control = risk.RiskControl()
 
@@ -105,23 +105,64 @@ class Strategy(object):
             best_bid = float(ticker['best_bid'])
             print('##best_ask=>', best_ask)
             print('##best_bid=>', best_bid)
-            # close_datas.append(last)
-            if signal != 'no' and order_count < self.max_running_order and now_time > should_order_time:
-                target_price = utils.calc_profit(
-                    price=last,
-                    fee_rate=0.0002,
-                    profit_point=0.0008,
-                    side=signal)
-                s_price = best_ask - 0.001
-                if signal == 'buy':
-                    s_price = best_bid + 0.001
 
-                sl_price = self.risk_control.calc_stop_loss_price(
-                    s_price, signal)
-                self.order_router.add_order(
-                    self.future_pair, s_price, target_price, sl_price,
-                    self.order_size, signal, self.strategy_name)
+            # if signal != 'no' and order_count < self.max_running_order and now_time > should_order_time:
+            #     target_price = utils.calc_profit(
+            #         price=last,
+            #         fee_rate=0.0002,
+            #         profit_point=0.0008,
+            #         side=signal)
+            #     s_price = best_ask - 0.001
+            #     if signal == 'buy':
+            #         s_price = best_bid + 0.001
+
+            #     sl_price = self.risk_control.calc_stop_loss_price(
+            #         s_price, signal)
+            #     self.order_router.add_order(
+            #         self.future_pair, s_price, target_price, sl_price,
+            #         self.order_size, signal, self.strategy_name)
+            # time.sleep(0.5)
+        
+            future_position = self.order_router.get_future_position(self.future_pair)
+            print('#####future_position=>', future_position)
+            long_avail_qty = 0
+            short_avail_qty = 0
+            if future_position != {}:
+                long_avail_qty = float(future_position['long_avail_qty'])
+                short_avail_qty = float(future_position['short_avail_qty'])
+            
+            print('#####long_avail_qty=>', long_avail_qty)
+            print('#####short_avail_qty=>', short_avail_qty)
+            
+            if signal != 'no' and order_count < self.max_running_order and now_time > should_order_time:
+                if signal == 'buy':
+                    self.order_router.submit_order( client_oid='',
+                                                    otype='1',
+                                                    instrument_id=self.future_pair,
+                                                    price=best_bid+0.001,
+                                                    size=1)
+                    if long_avail_qty != 0: 
+                        self.order_router.submit_order( client_oid='',
+                                                        otype='3',
+                                                        instrument_id=self.future_pair,
+                                                        price=best_ask-0.001,
+                                                        size=long_avail_qty)
+                elif signal == 'sell':
+                    self.order_router.submit_order( client_oid='',
+                                                    otype='2',
+                                                    instrument_id=self.future_pair,
+                                                    price=best_ask-0.001,
+                                                    size=1)
+                    if short_avail_qty != 0:
+                        self.order_router.submit_order( client_oid='',
+                                                        otype='4',
+                                                        instrument_id=self.future_pair,
+                                                        price=best_bid+0.001,
+                                                        size=short_avail_qty)
             time.sleep(0.5)
+                                                
+
+
 
 
 def main():
