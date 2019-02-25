@@ -21,7 +21,7 @@ class EMASignal(object):
         # print('slow_avg=>',slow_avg)
         # print('fast_avg=>',fast_avg)
         # 均线下穿，做空
-        if slow_avg[-2] < fast_avg[-2] and slow_avg[-1] >= fast_avg[-1]:
+        if slow_avg[-2] <= fast_avg[-2] and slow_avg[-1] >= fast_avg[-1]:
             sig = 'sell'
 
         # if distance_avg[-2] >= distance_avg[-1]:
@@ -29,7 +29,7 @@ class EMASignal(object):
 
     
         # 均线上穿，做多
-        if fast_avg[-2] < slow_avg[-2] and fast_avg[-1] >= slow_avg[-1]:
+        if fast_avg[-2] <= slow_avg[-2] and fast_avg[-1] >= slow_avg[-1]:
             sig = 'buy'
 
 
