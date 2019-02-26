@@ -134,7 +134,25 @@ class Strategy(object):
             print('#####long_avail_qty=>', long_avail_qty)
             print('#####short_avail_qty=>', short_avail_qty)
 
-            # if signal != 'no' and long_avail_qty < self.max_running_order #and now_time > should_order_time:
+
+            if long_avail_qty != 0:
+                long_avg_cost = float(future_position['long_avg_cost'])
+                if ((last - long_avg_cost) / long_avg_cost) > 0.011:
+                    self.order_router.submit_order( client_oid='',
+                                                    otype='3',
+                                                    instrument_id=self.future_pair,
+                                                    price=best_ask-0.001,
+                                                    match_price='1',
+                                                    size=int(long_avail_qty))
+            elif short_avail_qty != 0:
+                short_avg_cost = float(future_position['short_avg_cost'])
+                if ((long_avg_cost-last) / last) > 0.011:
+                    self.order_router.submit_order( client_oid='',
+                                                    otype='4',
+                                                    instrument_id=self.future_pair,
+                                                    price=best_bid+0.001,
+                                                    match_price='1',
+                                                    size=int(short_avail_qty))
 
         
             if signal == 'buy' and long_avail_qty < self.max_running_order :
