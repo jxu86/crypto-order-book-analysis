@@ -137,7 +137,9 @@ class Strategy(object):
 
             if long_avail_qty != 0:
                 long_avg_cost = float(future_position['long_avg_cost'])
-                if ((last - long_avg_cost) / long_avg_cost) > 0.011:
+                rate = (last - long_avg_cost) / long_avg_cost
+                print('long rate=>', rate)
+                if rate > 0.011:
                     self.order_router.submit_order( client_oid='',
                                                     otype='3',
                                                     instrument_id=self.future_pair,
@@ -146,7 +148,9 @@ class Strategy(object):
                                                     size=int(long_avail_qty))
             elif short_avail_qty != 0:
                 short_avg_cost = float(future_position['short_avg_cost'])
-                if ((short_avg_cost-last) / last) > 0.011:
+                rate = (short_avg_cost-last) / last
+                print('short rate=>', rate)
+                if rate > 0.011:
                     self.order_router.submit_order( client_oid='',
                                                     otype='4',
                                                     instrument_id=self.future_pair,
