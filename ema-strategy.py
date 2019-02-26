@@ -139,7 +139,7 @@ class Strategy(object):
                 long_avg_cost = float(future_position['long_avg_cost'])
                 rate = (last - long_avg_cost) / long_avg_cost
                 print('long rate=>', rate)
-                if rate > 0.011:
+                if rate > 0.003:
                     self.order_router.submit_order( client_oid='',
                                                     otype='3',
                                                     instrument_id=self.future_pair,
@@ -150,7 +150,7 @@ class Strategy(object):
                 short_avg_cost = float(future_position['short_avg_cost'])
                 rate = (short_avg_cost-last) / last
                 print('short rate=>', rate)
-                if rate > 0.011:
+                if rate > 0.003:
                     self.order_router.submit_order( client_oid='',
                                                     otype='4',
                                                     instrument_id=self.future_pair,
