@@ -6,7 +6,6 @@ import numpy as np
 import time
 import datetime
 import config
-from mongo_service.mongodb import MongoService
 import signals.ema as ema
 import order_service.order as order
 import risk_service.risk as risk
