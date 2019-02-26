@@ -136,15 +136,15 @@ class Strategy(object):
 
 
 
-            if long_avail_qty != 0 and sig == 'close_buy':
+            if long_avail_qty != 0 and signal == 'close_buy':
                 self.order_router.submit_order( client_oid='',
                                                 otype='3',
                                                 instrument_id=self.future_pair,
                                                 price=best_ask-0.001,
                                                 match_price='1',
                                                 size=int(long_avail_qty))
-                                                
-            elif short_avail_qty != 0 and sig == 'close_sell':
+
+            elif short_avail_qty != 0 and signal == 'close_sell':
                 self.order_router.submit_order( client_oid='',
                                                 otype='4',
                                                 instrument_id=self.future_pair,
