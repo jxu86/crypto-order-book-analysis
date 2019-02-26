@@ -146,7 +146,7 @@ class Strategy(object):
                                                     size=int(long_avail_qty))
             elif short_avail_qty != 0:
                 short_avg_cost = float(future_position['short_avg_cost'])
-                if ((long_avg_cost-last) / last) > 0.011:
+                if ((short_avg_cost-last) / last) > 0.011:
                     self.order_router.submit_order( client_oid='',
                                                     otype='4',
                                                     instrument_id=self.future_pair,
