@@ -32,7 +32,7 @@ class Strategy(object):
         self.order_router = order.OrderRouter()
         self.future_api = futures_api.FutureAPI(
             config.sub_apikey, config.sub_secretkey, config.sub_password, True)
-        self.ema = ema.EMASignal()
+        self.ema = ema.EMASignal(2,7)
         self.risk_control = risk.RiskControl()
         self.last_order_time = datetime.datetime.now()
 
@@ -155,7 +155,7 @@ class Strategy(object):
                 long_avg_cost = float(future_position['long_avg_cost'])
                 rate = (last - long_avg_cost) / long_avg_cost
                 print('long rate=>', rate)
-                if rate > 0.003:
+                if rate > 0.0011:
                     self.order_router.submit_order( client_oid='',
                                                     otype='3',
                                                     instrument_id=self.future_pair,
@@ -166,7 +166,7 @@ class Strategy(object):
                 short_avg_cost = float(future_position['short_avg_cost'])
                 rate = (short_avg_cost-last) / last
                 print('short rate=>', rate)
-                if rate > 0.003:
+                if rate > 0.0011:
                     self.order_router.submit_order( client_oid='',
                                                     otype='4',
                                                     instrument_id=self.future_pair,
@@ -211,7 +211,7 @@ class Strategy(object):
                                                 wait_flag=True)
                 
                     
-            time.sleep(0.5)
+            time.sleep(0.25)
                                                 
 
 
