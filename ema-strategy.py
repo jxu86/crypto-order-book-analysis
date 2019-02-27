@@ -32,7 +32,7 @@ class Strategy(object):
         self.order_router = order.OrderRouter()
         self.future_api = futures_api.FutureAPI(
             config.sub_apikey, config.sub_secretkey, config.sub_password, True)
-        self.ema = ema.EMASignal(2,7)
+        self.ema = ema.EMASignal()
         self.risk_control = risk.RiskControl()
         self.last_order_time = datetime.datetime.now()
         self.stop_profit_rate = config.stop_profit_rate
