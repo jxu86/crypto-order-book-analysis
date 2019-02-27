@@ -35,6 +35,7 @@ class Strategy(object):
         self.ema = ema.EMASignal(2,7)
         self.risk_control = risk.RiskControl()
         self.last_order_time = datetime.datetime.now()
+        self.stop_profit_rate = config.stop_profit_rate
 
     # load config from
     def _load_config(self):
@@ -134,28 +135,11 @@ class Strategy(object):
             print('#####long_avail_qty=>', long_avail_qty)
             print('#####short_avail_qty=>', short_avail_qty)
 
-
-
-            # if long_avail_qty != 0 and signal == 'close_buy':
-            #     self.order_router.submit_order( client_oid='',
-            #                                     otype='3',
-            #                                     instrument_id=self.future_pair,
-            #                                     price=best_ask-0.001,
-            #                                     match_price='1',
-            #                                     size=int(long_avail_qty))
-
-            # elif short_avail_qty != 0 and signal == 'close_sell':
-            #     self.order_router.submit_order( client_oid='',
-            #                                     otype='4',
-            #                                     instrument_id=self.future_pair,
-            #                                     price=best_bid+0.001,
-            #                                     match_price='1',
-            #                                     size=int(short_avail_qty))
             if long_avail_qty != 0:
                 long_avg_cost = float(future_position['long_avg_cost'])
                 rate = (last - long_avg_cost) / long_avg_cost
                 print('long rate=>', rate)
-                if rate > 0.0011:
+                if rate > self.stop_profit_rate:
                     self.order_router.submit_order( client_oid='',
                                                     otype='3',
                                                     instrument_id=self.future_pair,
@@ -166,7 +150,7 @@ class Strategy(object):
                 short_avg_cost = float(future_position['short_avg_cost'])
                 rate = (short_avg_cost-last) / last
                 print('short rate=>', rate)
-                if rate > 0.0011:
+                if rate > self.stop_profit_rate:
                     self.order_router.submit_order( client_oid='',
                                                     otype='4',
                                                     instrument_id=self.future_pair,

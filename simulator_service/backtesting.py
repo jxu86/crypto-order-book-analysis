@@ -363,7 +363,7 @@ class SimulationEngine(object):
             target_price = utils.calc_profit(
                                         price=o_price,
                                         fee_rate=0.0002,
-                                        profit_point=0.0011,
+                                        profit_point=0.0020,
                                         side=side)
             if (side == 'buy' and target_price <= close) or  (side == 'sell' and target_price >= close):
                 order_info = self._broker.close_order(order_id, close, time)
