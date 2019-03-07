@@ -69,7 +69,8 @@ class OrderManager():
                      size,
                      notional,
                      timeout=20,
-                     wait_flag=False):
+                     wait_flag=False,
+                     order_record=True):
         try:
             order_info = self.spot_api.take_order(
                 client_oid=client_oid,
@@ -90,7 +91,8 @@ class OrderManager():
             order = self.spot_api.get_order_info(order_id, instrument_id)
             print('spot order2==>', order)
         except:
-            self.add_order(instrument_id=instrument_id, price=price, t_price=0, size=size, side=side, order=order_info)
+            if order_record:
+                self.add_order(instrument_id=instrument_id, price=price, t_price=0, size=size, side=side, order=order_info)
             print('spot read order info err')
             return
 
@@ -103,8 +105,8 @@ class OrderManager():
                     return order
             except:
                 print('spot read order info err')
-        
-        self.add_order(instrument_id=instrument_id, price=price, t_price=0, size=size, side=side, order=order)
+        if order_record:
+            self.add_order(instrument_id=instrument_id, price=price, t_price=0, size=size, side=side, order=order)
 
         return order
 
@@ -184,7 +186,8 @@ class Strategy():
                                             instrument_id=self.spot_pair,
                                             size=self.spot_size,
                                             price=spot_price, 
-                                            notional='')
+                                            notional='',
+                                            order_record=False)
             #====================================================================
             t_rate = (bid_one/last_order_price)
             print('t_rate=>', t_rate, 'self.t_rate==>', self.t_rate)
