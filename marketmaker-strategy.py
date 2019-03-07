@@ -205,6 +205,7 @@ class Strategy():
         elif bid_one != last_order_price:
             # 撤销订单
             self.order_manager.cancel_order(order_id, self.spot_pair)
+            self.order_manager.del_order()
         else: # 继续等
             pass
 
