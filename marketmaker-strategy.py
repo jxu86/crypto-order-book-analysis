@@ -83,14 +83,16 @@ class OrderManager():
             print('#######submit_spot_order=>e==>')
             return 		
         order_id = order_info['order_id']
-        # time.sleep(0.5)
+        time.sleep(0.05)
         print('#####instrument_id=>', instrument_id)
         print('#####order_id=>', order_id)
         try:
             order = self.spot_api.get_order_info(order_id, instrument_id)
             print('spot order2==>', order)
         except:
+            self.add_order(instrument_id=instrument_id, price=price, t_price=0, size=size, side=side, order=order_info)
             print('spot read order info err')
+            return
 
         while wait_flag: 
             time.sleep(0.2)
@@ -147,12 +149,14 @@ class Strategy():
         #检查position是否还可以下单
         base_position = self.order_manager.check_position(self.base)
         base_balance = float(base_position['balance'])
+        print('base_balance=>',base_balance)
         if base_balance >= self.limit_base_position_size: #position已经到上限
             return 
         #====================================================================
         order_info = self.order_manager.get_last_order_info()
+        print('order_info=>', order_info)
         if order_info == None: #下第一张单
-            spot_price = 2 #bid_one
+            spot_price = bid_one
             #notional = self.spot_size * spot_price
 
             self.order_manager.submit_spot_order(client_oid='',
@@ -166,7 +170,7 @@ class Strategy():
             return 
 
         status = order_info['status']
-        last_order_price = order_info['price']
+        last_order_price = float(order_info['price'])
         order_id = order_info['order_id']
         
         if status == 'filled': # 已经fill
@@ -182,7 +186,9 @@ class Strategy():
                                             price=spot_price, 
                                             notional='')
             #====================================================================
-            if (bid_one/last_order_price) > self.t_rate:
+            t_rate = (bid_one/last_order_price)
+            print('t_rate=>', t_rate, 'self.t_rate==>', self.t_rate)
+            if t_rate >= self.t_rate:
                 spot_price = bid_one
                 #notional = self.spot_size * spot_price
                 self.order_manager.submit_spot_order(client_oid='',
