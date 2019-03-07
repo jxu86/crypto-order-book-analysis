@@ -1,4 +1,6 @@
-
+import sys
+sys.path.remove('/home/nowdone/envs/triangular/git/okex_sdk')
+print(sys.path)
 import redis
 import json
 import okex.spot_api as spot_api
@@ -7,7 +9,6 @@ from utils import JSONDateTimeDecoder
 import datetime
 import time
 import uuid
-
 
 class OrderManager():
     def __init__(self):
@@ -76,12 +77,11 @@ class OrderManager():
                 otype=otype,
                 side=side,
                 size=size,
-                notional=notional,
                 price=price)
             print('order_info=>', order_info)
         except:
             print('#######submit_spot_order=>e==>')
-
+            return 		
         order_id = order_info['order_id']
         # time.sleep(0.5)
         print('#####instrument_id=>', instrument_id)
@@ -121,8 +121,8 @@ class OrderManager():
 
 class Strategy():
     def __init__(self):
-        # r = redis.Redis(host='127.0.0.1', port=6379, password='nowdone2go', decode_responses=True)
-        r = redis.Redis(host='127.0.0.1', port=6379, decode_responses=True)
+        r = redis.Redis(host='127.0.0.1', port=6379, password='nowdone2go', decode_responses=True)
+        #r = redis.Redis(host='127.0.0.1', port=6379, decode_responses=True)
         self.ps = r.pubsub()
         self.spot_pair = 'EOS-USDT'
         self.base = 'EOS'
@@ -131,7 +131,7 @@ class Strategy():
         self.ps.subscribe([subscribe_msg])  #订阅消息
         self.order_manager = OrderManager()
         self.spot_size = 0.1
-        self.limit_base_position_size = 1
+        self.limit_base_position_size = 8
         self.t_rate = 1.001 + 0.002 * 0.13
         
 
@@ -143,7 +143,7 @@ class Strategy():
         # ask_one_amount = data['asks'][-1]['amount']
         bid_one = data['bids'][0]['price']
         # bid_one_amount = data['bids'][0]['amount']
-
+        print('bid_one==>',bid_one)
         #检查position是否还可以下单
         base_position = self.order_manager.check_position(self.base)
         base_balance = float(base_position['balance'])
@@ -151,9 +151,9 @@ class Strategy():
             return 
         #====================================================================
         order_info = self.order_manager.get_last_order_info()
-        if order_info != None: #下第一张单
-            spot_price = bid_one
-            notional = self.spot_size * spot_price
+        if order_info == None: #下第一张单
+            spot_price = 2 #bid_one
+            #notional = self.spot_size * spot_price
 
             self.order_manager.submit_spot_order(client_oid='',
                                             otype='limit', 
@@ -161,11 +161,11 @@ class Strategy():
                                             instrument_id=self.spot_pair,
                                             size=self.spot_size,
                                             price=spot_price, 
-                                            notional=notional)
+                                            notional='')
 
             return 
 
-        status = order_info['order_info']
+        status = order_info['status']
         last_order_price = order_info['price']
         order_id = order_info['order_id']
         
@@ -173,25 +173,25 @@ class Strategy():
             self.order_manager.del_order()
             # 下相反的订单
             spot_price = last_order_price * self.t_rate
-            notional = self.spot_size * spot_price
+            #notional = self.spot_size * spot_price
             self.order_manager.submit_spot_order(client_oid='',
                                             otype='limit', 
                                             side='sell', 
                                             instrument_id=self.spot_pair,
                                             size=self.spot_size,
                                             price=spot_price, 
-                                            notional=notional)
+                                            notional='')
             #====================================================================
             if (bid_one/last_order_price) > self.t_rate:
                 spot_price = bid_one
-                notional = self.spot_size * spot_price
+                #notional = self.spot_size * spot_price
                 self.order_manager.submit_spot_order(client_oid='',
                                                 otype='limit', 
                                                 side='buy', 
                                                 instrument_id=self.spot_pair,
                                                 size=self.spot_size,
                                                 price=spot_price, 
-                                                notional=notional)
+                                                notional='')
 
         elif bid_one != last_order_price:
             # 撤销订单
@@ -205,9 +205,9 @@ class Strategy():
                 data = json.loads(item['data'], cls=JSONDateTimeDecoder)
                 self.handle_data(data)
 
-        # notional = 2 * self.spot_size
-        # self.order_manager.submit_spot_order(client_oid='',
-        #                                         otype='limit', 
+        #notional = 2 * self.spot_size
+        #self.order_manager.submit_spot_order(client_oid='',
+        #                                        otype='limit', 
         #                                         side='buy', 
         #                                         instrument_id=self.spot_pair,
         #                                         size=self.spot_size,
@@ -219,8 +219,7 @@ class Strategy():
         # print('order router =>', self.order_manager.order_router)
         # order_info = self.order_manager.get_last_order_info()
         # print('order_info', order_info)
-
-def main():
+def main():    
     print('#main start#')
     strategy = Strategy()
     strategy.run()
