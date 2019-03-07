@@ -107,8 +107,8 @@ class OrderManager():
         return order
 
 
-    def cancel_order(self, order_id):
-        pass
+    def cancel_order(self, order_id, instrument_id):
+        return self.spot_api.revoke_order(order_id, instrument_id)
 
     def get_order_info(self, order_id, instrument_id):
         return self.spot_api.get_order_info(order_id, instrument_id)
@@ -195,7 +195,7 @@ class Strategy():
 
         elif bid_one != last_order_price:
             # 撤销订单
-            self.order_manager.cancel_order(order_id)
+            self.order_manager.cancel_order(order_id, self.spot_pair)
         else: # 继续等
             pass
 
@@ -206,19 +206,20 @@ class Strategy():
                 self.handle_data(data)
 
         #notional = 2 * self.spot_size
-        #self.order_manager.submit_spot_order(client_oid='',
+        # self.order_manager.submit_spot_order(client_oid='',
         #                                        otype='limit', 
         #                                         side='buy', 
         #                                         instrument_id=self.spot_pair,
         #                                         size=self.spot_size,
         #                                         price=2, 
-        #                                         notional=notional)
+        #                                         notional='')
 
         # base_position = self.order_manager.check_position(self.base)
         # print('base_position=>', base_position)
         # print('order router =>', self.order_manager.order_router)
         # order_info = self.order_manager.get_last_order_info()
         # print('order_info', order_info)
+        # self.order_manager.cancel_order('2440319292018688', self.spot_pair)
 def main():    
     print('#main start#')
     strategy = Strategy()
