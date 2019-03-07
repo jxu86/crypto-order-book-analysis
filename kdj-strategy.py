@@ -143,7 +143,7 @@ class OrderRouter(object):
         }
         self.order_router.append(order)
         self.save_order(order)
-
+            
     def get_next_strategy_status(self, current_status, order_status):
         status = current_status
         print('##########get_next_strategy_status=>current_status==>',

@@ -4,6 +4,7 @@ import datetime
 import time
 import pytz
 import numpy as np
+from json import JSONDecoder, JSONEncoder
 
 
 TIME_ZONE = 'Asia/Shanghai'
@@ -49,3 +50,39 @@ def calc_future_interest(future_price, spot_price, end_time):
 #     return (a1-a2)/a2+(b2-b1)/b1 -0.006
 
 
+class JSONDateTimeEncoder(JSONEncoder):
+
+    def default(self, obj):
+        if isinstance(obj, datetime.datetime):
+            return {
+                '__type__': 'datetime',
+                'year': obj.year,
+                'month': obj.month,
+                'day': obj.day,
+                'hour': obj.hour,
+                'minute': obj.minute,
+                'second': obj.second,
+                'microsecond': obj.microsecond,
+            }
+        else:
+            return JSONEncoder.default(self, obj)
+
+
+class JSONDateTimeDecoder(JSONDecoder):
+
+    def __init__(self, *args, **kargs):
+        JSONDecoder.__init__(
+            self, object_hook=self.dict_to_object, *args, **kargs)
+
+    def dict_to_object(self, date):
+        if '__type__' not in date:
+            return date
+
+        type = date.pop('__type__')
+        try:
+            date_obj = datetime.datetime(**date)
+            return date_obj
+        except ValueError:
+            date['__type__'] = type
+
+            return date

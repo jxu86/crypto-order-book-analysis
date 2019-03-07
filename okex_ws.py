@@ -347,7 +347,7 @@ class OKExOrderBookTask(OKExSpotTask):
             'asks': convert_type(data['data']['asks'], float),
             'bids': convert_type(data['data']['bids'], float),
             'timestamp': data['data']['timestamp'],
-            'createdAt': datetime.datetime.now(),
+            'createdAt': datetime.datetime.now()
         }
 
     @classmethod
