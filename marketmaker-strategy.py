@@ -139,7 +139,7 @@ class Strategy():
 
     def handle_data(self, data):
         if time.time() - data['datetime'].timestamp() > 0.1: #延时大放弃
-            print('datetime==>', datetime)
+            print('datetime==>', data['datetime'])
             return
         # ask_one = data['asks'][-1]['price']
         # ask_one_amount = data['asks'][-1]['amount']
