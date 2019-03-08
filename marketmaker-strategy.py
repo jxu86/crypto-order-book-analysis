@@ -1,6 +1,4 @@
 import sys
-sys.path.remove('/home/nowdone/envs/triangular/git/okex_sdk')
-print(sys.path)
 import redis
 import json
 import okex.spot_api as spot_api
@@ -189,7 +187,7 @@ class Strategy():
                                             notional='',
                                             order_record=False)
             #====================================================================
-            t_rate = (bid_one/last_order_price)
+            t_rate = (last_order_price/bid_one)
             print('t_rate=>', t_rate, 'self.t_rate==>', self.t_rate)
             if t_rate >= self.t_rate:
                 spot_price = bid_one
@@ -230,6 +228,10 @@ class Strategy():
         # order_info = self.order_manager.get_last_order_info()
         # print('order_info', order_info)
         # self.order_manager.cancel_order('2440319292018688', self.spot_pair)
+        # order = self.order_manager.spot_api.get_order_info('2442411268776960', self.spot_pair)
+        # print('order=>', order)
+
+
 def main():    
     print('#main start#')
     strategy = Strategy()
