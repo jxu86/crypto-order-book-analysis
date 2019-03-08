@@ -133,7 +133,7 @@ class Strategy():
         self.ps.subscribe([subscribe_msg])  #订阅消息
         self.order_manager = OrderManager()
         self.spot_size = 0.1
-        self.limit_base_position_size = 3
+        self.limit_base_position_size = 4
         self.t_rate = 1.001 + 0.002 * 0.13
         
 
