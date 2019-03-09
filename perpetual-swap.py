@@ -94,32 +94,49 @@ class Swap(object):
 
 
     def calc_fee_rate(self, price):
-        index = self.swap_api.get_index(self.swap_instrument_id)
-        index_price = float(index['index'])
+        index_price = 0
+        try:
+            index = self.swap_api.get_index(self.swap_instrument_id)
+            index_price = float(index['index'])
+        except:
+            print('#####get index price err')
         swap_fee =  (price-index_price)/index_price
-        return swap_fee
+        return index_price, swap_fee
         # self.fee_list.append((mid_one-index_price)/index_price)
 
 
     def handle_data(self, data):
         # print('data=>',data)
-        self.count += 1
-        if self.count < 10:
-            return
-
+        # self.count += 1
+        # if self.count < 10:
+        #     return
 
         self.count = 0
         ask_one = data['asks'][0]['price']
         bid_one = data['bids'][0]['price']
         instrument_id = data['instrument_id']
+        
         mid_one = (ask_one+bid_one)/2
 
         if instrument_id == self.future_quarter_instrument_id:
             r = self.calc_future_fee_rate(mid_one)
             print('r2==>', r)
         elif instrument_id == self.swap_instrument_id:
-            r = self.calc_fee_rate(mid_one)
+            index_price, r = self.calc_fee_rate(mid_one)
+            ret = {
+                'instrument_id': instrument_id,
+                'datetime': data['datetime'],
+                'ask_one': ask_one,
+                'bid_one': bid_one,
+                'index_price': index_price,
+                'rate': r,
+                'created_at': datetime.datetime.now()
+            }
+
+            self.mongodb.update(self.mongodb.swap_calc_rate, {'instrument_id': ret['instrument_id'], 'datetime': ret['datetime']},{'$set': ret})
             print('r0==>', r)
+
+
             # self.swap_fee_list.append(r)
             # self.swap_fee_list.pop(0)
             # print('ma r0',talib.EMA(np.array(self.swap_fee_list), timeperiod = 500)[-1])
@@ -145,7 +162,6 @@ class Swap(object):
         
     
     def run(self):
-
         for item in self.ps.listen():		#监听状态：有消息发布了就拿过来
             if item['type'] == 'message':
                 data = json.loads(item['data'], cls=JSONDateTimeDecoder)
