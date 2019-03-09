@@ -145,7 +145,7 @@ class OrderManager():
                 new_sell_list.append(s)
         self.sell_list = new_sell_list
         if len(self.sell_list):
-            min_sell_price = min[s['price'] for s in self.sell_list]
+            min_sell_price = min([s['price'] for s in self.sell_list])
         print('#self.sell_list=>', self.sell_list)
         return min_sell_price
 
