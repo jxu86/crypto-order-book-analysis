@@ -69,6 +69,7 @@ class OrderManager():
                      timeout=20,
                      wait_flag=False,
                      order_record=True):
+        order_info =  None             
         try:
             order_info = self.spot_api.take_order(
                 client_oid=client_oid,
@@ -81,6 +82,10 @@ class OrderManager():
         except:
             print('#######submit_spot_order=>e==>')
             return 		
+    
+        if order_record == False:
+            return order_info
+
         order_id = order_info['order_id']
         time.sleep(0.05)
         print('#####instrument_id=>', instrument_id)
@@ -89,8 +94,7 @@ class OrderManager():
             order = self.spot_api.get_order_info(order_id, instrument_id)
             print('spot order2==>', order)
         except:
-            if order_record:
-                self.add_order(instrument_id=instrument_id, price=price, t_price=0, size=size, side=side, order=order_info)
+            self.add_order(instrument_id=instrument_id, price=price, t_price=0, size=size, side=side, order=order_info)
             print('spot read order info err')
             return
 
@@ -103,8 +107,7 @@ class OrderManager():
                     return order
             except:
                 print('spot read order info err')
-        if order_record:
-            self.add_order(instrument_id=instrument_id, price=price, t_price=0, size=size, side=side, order=order)
+        self.add_order(instrument_id=instrument_id, price=price, t_price=0, size=size, side=side, order=order)
 
         return order
 
@@ -133,8 +136,9 @@ class Strategy():
         self.ps.subscribe([subscribe_msg])  #订阅消息
         self.order_manager = OrderManager()
         self.spot_size = 0.1
-        self.limit_base_position_size = 4
+        self.limit_base_position_size = config.max_limit_base_position
         self.t_rate = 1.001 + 0.002 * 0.13
+        self.last_bid_price = 0
         
 
     def handle_data(self, data):
@@ -156,9 +160,10 @@ class Strategy():
         order_info = self.order_manager.get_last_order_info()
         print('order_info=>', order_info)
         if order_info == None: #下第一张单
-            spot_price = bid_one
-            #notional = self.spot_size * spot_price
+            if self.last_bid_price != 0 and (self.last_bid_price/bid_one) < self.t_rate:
+                return
 
+            spot_price = bid_one
             self.order_manager.submit_spot_order(client_oid='',
                                             otype='limit', 
                                             side='buy', 
@@ -174,7 +179,6 @@ class Strategy():
         order_id = order_info['order_id']
         
         if status == 'filled': # 已经fill
-            self.order_manager.del_order()
             # 下相反的订单
             spot_price = last_order_price * self.t_rate
             #notional = self.spot_size * spot_price
@@ -199,6 +203,8 @@ class Strategy():
                                                 size=self.spot_size,
                                                 price=spot_price, 
                                                 notional='')
+            self.order_manager.del_order()
+            self.last_bid_price = last_order_price
 
         elif bid_one != last_order_price:
             # 撤销订单
