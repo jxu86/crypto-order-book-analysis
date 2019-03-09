@@ -89,7 +89,7 @@ class OrderManager():
                 {
                     'order_id': order_id,
                     'instrument_id': instrument_id,
-                    'side': side
+                    'side': side,
                     'price': price
                     # 'status': 'pending'
                 }
