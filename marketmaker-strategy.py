@@ -12,6 +12,7 @@ class OrderManager():
     def __init__(self):
         self.spot_api = spot_api.SpotAPI(config.apikey, config.secretkey, config.password, True)
         self.order_router = []
+        self.sell_list = []
 
     def check_position(self, symbol):
         return self.spot_api.get_coin_account_info(symbol)
@@ -82,11 +83,22 @@ class OrderManager():
         except:
             print('#######submit_spot_order=>e==>')
             return 		
-    
+        order_id = order_info['order_id']
+        if side == 'sell':
+            self.sell_list.append(
+                {
+                    'order_id': order_id,
+                    'instrument_id': instrument_id,
+                    'side': side
+                    'price': price
+                    # 'status': 'pending'
+                }
+            )
+
         if order_record == False:
             return order_info
 
-        order_id = order_info['order_id']
+        
         time.sleep(0.05)
         print('#####instrument_id=>', instrument_id)
         print('#####order_id=>', order_id)
@@ -124,6 +136,18 @@ class OrderManager():
         order = self.order_router[-1]
         return self.get_order_info(order['order']['order_id'], order['instrument_id'])
 
+    def update_sell_list(self, ask_price):
+        new_sell_list = []
+        min_sell_price = 0
+        for s in self.sell_list:
+            if s['price'] > ask_price:
+                new_sell_list.append(s)
+        self.sell_list = new_sell_list
+        if len(self.sell_list):
+            min_sell_price = min[s['price'] for s in self.sell_list]
+
+        return min_sell_price
+
 class Strategy():
     def __init__(self):
         r = redis.Redis(host='127.0.0.1', port=6379, password='nowdone2go', decode_responses=True)
@@ -140,13 +164,14 @@ class Strategy():
         self.t_rate = 1.0005 + 0.002 * 0.13
         self.last_bid_price = 0
         self.init_base = 0
-        
+       
+    
 
     def handle_data(self, data):
         if time.time() - data['datetime'].timestamp() > 0.1: #延时大放弃
             print('datetime==>', data['datetime'])
             return
-        # ask_one = data['asks'][-1]['price']
+        ask_one = data['asks'][-1]['price']
         # ask_one_amount = data['asks'][-1]['amount']
         bid_one = data['bids'][0]['price']
         # bid_one_amount = data['bids'][0]['amount']
@@ -169,6 +194,8 @@ class Strategy():
         print('order_info=>', order_info)
         if order_info == None: #下第一张单
             if self.last_bid_price != 0 and (self.last_bid_price/bid_one) < self.t_rate:
+                min_sell_price = self.order_manager.update_sell_list(ask_one)
+                self.last_bid_price = ask_one/self.t_rate
                 return
 
             spot_price = bid_one
