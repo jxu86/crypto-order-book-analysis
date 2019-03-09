@@ -139,6 +139,7 @@ class Strategy():
         self.limit_base_position_size = config.max_limit_base_position
         self.t_rate = 1.001 + 0.002 * 0.13
         self.last_bid_price = 0
+        self.init_base = 0
         
 
     def handle_data(self, data):
@@ -154,6 +155,12 @@ class Strategy():
         #检查position是否还可以下单
         base_position = self.order_manager.check_position(self.base)
         base_balance = float(base_position['balance'])
+        if self.init_base == 0:
+            self.init_base = base_balance
+            
+        if self.init_base == base_balance:
+            self.last_bid_price = 0
+            
         print('base_balance=>',base_balance)
         if base_balance >= self.limit_base_position_size: #position已经到上限
             return 
