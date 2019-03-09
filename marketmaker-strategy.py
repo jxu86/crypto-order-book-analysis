@@ -196,7 +196,7 @@ class Strategy():
         if order_info == None: #下第一张单
             if self.last_bid_price != 0 and (self.last_bid_price/bid_one) < self.t_rate:
                 min_sell_price = self.order_manager.update_sell_list(ask_one)
-                self.last_bid_price = ask_one/self.t_rate
+                self.last_bid_price = min_sell_price/self.t_rate
                 return
 
             spot_price = bid_one
