@@ -150,6 +150,7 @@ class Strategy():
         bid_one = data['bids'][0]['price']
         # bid_one_amount = data['bids'][0]['amount']
         print('bid_one==>',bid_one)
+        print('self.last_bid_price=>', self.last_bid_price)
         #检查position是否还可以下单
         base_position = self.order_manager.check_position(self.base)
         base_balance = float(base_position['balance'])
