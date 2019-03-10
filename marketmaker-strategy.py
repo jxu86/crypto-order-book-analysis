@@ -11,8 +11,8 @@ import uuid
 
 class OrderManager():
     def __init__(self):
-        self.spot_api = spot_api.SpotAPI(config.apikey, config.secretkey,
-                                         config.password, True)
+        self.spot_api = spot_api.SpotAPI(config.sub_apikey, config.sub_secretkey,
+                                         config.sub_password, True)
         self.order_router = []
         self.sell_list = []
         self.buy_list = []
@@ -72,6 +72,7 @@ class OrderManager():
                           wait_flag=False,
                           order_record=True,
                           close_record=False):
+        print('###submit_spot_order=>side==>',side,' ==>', price)
         order_info = None
         try:
             order_info = self.spot_api.take_order(
@@ -81,7 +82,7 @@ class OrderManager():
                 side=side,
                 size=size,
                 price=price)
-            print('order_info=>', order_info)
+            print('submit_spot_order=>order_info==>', order_info)
         except:
             print('#######submit_spot_order=>e==>')
             return None
@@ -280,11 +281,13 @@ class Strategy():
                 self.submit_order(self.main_side, bast_price)
             else:
                 self.update_last_price(self.main_side, bast_c_price)
+
             return
 
         status = order_info['status']
         last_order_price = float(order_info['price'])
         order_id = order_info['order_id']
+
 
         if status == 'filled':  # 已经fill
             # 下相反的订单,平仓
@@ -295,6 +298,7 @@ class Strategy():
                 price = last_order_price * self.t_rate
             self.submit_order(side, price, order_record=False, close_record=True)
             self.order_manager.del_order()
+
             # 下新的订单开仓
             if self.signal(self.main_side, bast_price):
                 self.submit_order(self.main_side, bast_price)
