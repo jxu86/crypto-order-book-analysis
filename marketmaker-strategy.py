@@ -116,7 +116,7 @@ class OrderManager():
                 t_price=0,
                 size=size,
                 side=side,
-                order=order)
+                order=order_info)
         return order_info
 
         # time.sleep(0.05)
@@ -202,7 +202,7 @@ class Strategy():
         self.init_base = 0
         self.main_side = config.main_side
 
-    def submit_order(self, side, price):
+    def submit_order(self, side, price, order_record=True, close_record=False):
         return self.order_manager.submit_spot_order(
             client_oid='',
             otype='limit',
@@ -210,7 +210,9 @@ class Strategy():
             instrument_id=self.spot_pair,
             size=self.spot_size,
             price=price,
-            notional='')
+            notional='',
+            order_record=order_record,
+            close_record=close_record)
 
     #
     def signal(self, side, price):
@@ -263,6 +265,7 @@ class Strategy():
 
         print('base_balance=>', base_balance)
         if base_balance >= self.limit_base_position_size:  #position已经到上限
+            print('###over position')
             return
         #====================================================================
         order_info = self.order_manager.get_last_order_info()
@@ -285,7 +288,7 @@ class Strategy():
             if self.main_side == 'buy':
                 side = 'sell'
                 price = last_order_price / self.t_rate
-            self.submit_order(side, price)
+            self.submit_order(side, price, order_record=False, close_record=True)
 
             # 下新的订单开仓
             if self.signal(self.main_side, bast_price):
