@@ -145,7 +145,10 @@ class OrderManager():
         # return order
 
     def cancel_order(self, order_id, instrument_id):
-        return self.spot_api.revoke_order(order_id, instrument_id)
+        print('####cancel_order=>order_id==>', order_id)
+        ret = self.spot_api.revoke_order(order_id, instrument_id)
+        print('##cancel_order=>ret==>', ret)
+        return ret
 
     def get_order_info(self, order_id, instrument_id):
         return self.spot_api.get_order_info(order_id, instrument_id)
@@ -287,7 +290,6 @@ class Strategy():
         status = order_info['status']
         last_order_price = float(order_info['price'])
         order_id = order_info['order_id']
-
 
         if status == 'filled':  # 已经fill
             # 下相反的订单,平仓
