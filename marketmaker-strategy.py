@@ -301,9 +301,9 @@ class Strategy():
             self.submit_order(side, price, order_record=False, close_record=True)
             self.order_manager.del_order()
 
-            # 下新的订单开仓
-            if self.signal(self.main_side, bast_price):
-                self.submit_order(self.main_side, bast_price)
+            # # 下新的订单开仓
+            # if self.signal(self.main_side, bast_price):
+            #     self.submit_order(self.main_side, bast_price)
 
             self.last_bid_price = last_order_price
             self.last_ask_price = last_order_price
