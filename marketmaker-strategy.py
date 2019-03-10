@@ -220,7 +220,9 @@ class Strategy():
         #         min_sell_price = self.order_manager.update_sell_list(ask_one)
         #         self.last_bid_price = min_sell_price/self.t_rate
         #         return
-        if self.last_bid_price or self.last_ask_price:
+        print('self.last_ask_price ==>',self.last_ask_price)
+        print('self.last_bid_price ==>',self.last_bid_price)
+        if self.last_bid_price==0 or self.last_ask_price==0:
             return False
         if side == 'buy' and (self.last_bid_price / price) > self.t_rate:
             return True
@@ -231,10 +233,10 @@ class Strategy():
     def update_last_price(self, side, price):
 
         if side == 'buy':
-            min_sell_price = self.order_manager.update_sell_list(side, price)
+            min_sell_price = self.order_manager.update_sell_list(price)
             self.last_bid_price = min_sell_price/self.t_rate
         elif side == 'sell':
-            max_buy_price = self.order_manager.update_buy_list(side, price)
+            max_buy_price = self.order_manager.update_buy_list(price)
             self.last_ask_price = max_buy_price*self.t_rate
 
     def handle_data(self, data):
@@ -250,6 +252,9 @@ class Strategy():
             bast_c_price = bid_one
 
         print('bid_one==>', bid_one)
+        print('ask_one==>', ask_one)
+        print('bast_price==>', bast_price)
+        print('bast_c_price==>', bast_c_price)
         print('self.last_bid_price=>', self.last_bid_price)
         print('self.last_ask_price=>', self.last_ask_price)
 
@@ -263,7 +268,7 @@ class Strategy():
             self.last_bid_price = 0
             self.last_ask_price = 0
 
-        print('base_balance=>', base_balance)
+        print('base_position=>', base_position)
         if base_balance >= self.limit_base_position_size:  #position已经到上限
             print('###over position')
             return
@@ -283,13 +288,13 @@ class Strategy():
 
         if status == 'filled':  # 已经fill
             # 下相反的订单,平仓
-            price = last_order_price * self.t_rate
+            price = last_order_price / self.t_rate
             side = 'buy'
             if self.main_side == 'buy':
                 side = 'sell'
-                price = last_order_price / self.t_rate
+                price = last_order_price * self.t_rate
             self.submit_order(side, price, order_record=False, close_record=True)
-
+            self.order_manager.del_order()
             # 下新的订单开仓
             if self.signal(self.main_side, bast_price):
                 self.submit_order(self.main_side, bast_price)
