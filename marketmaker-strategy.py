@@ -297,7 +297,7 @@ class Strategy():
         if order_info == None and self.strategy_status == 'start':  #下第一张单
             if (self.main_side == 'buy' and self.last_bid_price == 0) or (self.main_side == 'sell' and self.last_ask_price == 0) or self.signal(self.main_side, bast_price):
                 self.submit_order(self.main_side, bast_price)
-                self.order_submit += 0
+                self.order_submit += 1
                 self.strategy_status = 'close'
             else:
                 self.update_last_price(self.main_side, bast_c_price)
@@ -317,7 +317,7 @@ class Strategy():
                 price = last_order_price * self.t_rate
             self.submit_order(side, price, order_record=False, close_record=True)
             self.strategy_status = 'start'
-            self.order_close += 0
+            self.order_close += 1
             self.order_manager.del_order()
 
             # # 下新的订单开仓
@@ -331,7 +331,7 @@ class Strategy():
             # 撤销订单
             self.order_manager.cancel_order(order_id, self.spot_pair)
             self.strategy_status = 'start'
-            self.order_cancel += 0
+            self.order_cancel += 1
             self.order_manager.del_order()
         else:  # 继续等
             pass
