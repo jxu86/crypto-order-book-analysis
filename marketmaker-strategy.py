@@ -172,7 +172,7 @@ class OrderManager():
 
     def update_buy_list(self, bid_price):
         new_buy_list = []
-        min_buy_price = 0
+        max_buy_price = 0
         for b in self.buy_list:
             if b['price'] < bid_price:
                 new_buy_list.append(b)
