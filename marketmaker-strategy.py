@@ -205,6 +205,10 @@ class Strategy():
         self.last_ask_price = 0
         self.init_base = 0
         self.main_side = config.main_side
+        self.order_cancel = 0
+        self.order_submit = 0
+        self.order_close = 0
+        self.strategy_status = 'start'
 
     def submit_order(self, side, price, order_record=True, close_record=False):
         return self.order_manager.submit_spot_order(
@@ -262,8 +266,19 @@ class Strategy():
         print('self.last_bid_price=>', self.last_bid_price)
         print('self.last_ask_price=>', self.last_ask_price)
 
+        print('##order_submit==>', self.order_submit)
+        print('##order_close==>', self.order_close)
+        print('##order_cancel==>', self.order_cancel)
+        print('##strategy_status==>', self.strategy_status)
+
         #检查position是否还可以下单, 用base作为控仓
-        base_position = self.order_manager.check_position(self.base)
+
+        base_symbol = self.base
+        if self.main_side == 'sell':
+            base_symbol = self.quote
+        
+        base_position = self.order_manager.check_position(base_symbol)
+
         base_balance = float(base_position['balance'])
         if self.init_base == 0:  #记住当前仓位
             self.init_base = base_balance
@@ -279,9 +294,11 @@ class Strategy():
         #====================================================================
         order_info = self.order_manager.get_last_order_info()
         print('order_info=>', order_info)
-        if order_info == None:  #下第一张单
+        if order_info == None and self.strategy_status == 'start':  #下第一张单
             if (self.main_side == 'buy' and self.last_bid_price == 0) or (self.main_side == 'sell' and self.last_ask_price == 0) or self.signal(self.main_side, bast_price):
                 self.submit_order(self.main_side, bast_price)
+                self.order_submit += 0
+                self.strategy_status = 'close'
             else:
                 self.update_last_price(self.main_side, bast_c_price)
 
@@ -291,7 +308,7 @@ class Strategy():
         last_order_price = float(order_info['price'])
         order_id = order_info['order_id']
 
-        if status == 'filled':  # 已经fill
+        if status == 'filled' and self.strategy_status == 'close':  # 已经fill
             # 下相反的订单,平仓
             price = last_order_price / self.t_rate
             side = 'buy'
@@ -299,6 +316,8 @@ class Strategy():
                 side = 'sell'
                 price = last_order_price * self.t_rate
             self.submit_order(side, price, order_record=False, close_record=True)
+            self.strategy_status = 'start'
+            self.order_close += 0
             self.order_manager.del_order()
 
             # # 下新的订单开仓
@@ -308,9 +327,11 @@ class Strategy():
             self.last_bid_price = last_order_price
             self.last_ask_price = last_order_price
 
-        elif bast_price != last_order_price:
+        elif bast_price != last_order_price and self.strategy_status == 'close':
             # 撤销订单
             self.order_manager.cancel_order(order_id, self.spot_pair)
+            self.strategy_status = 'start'
+            self.order_cancel += 0
             self.order_manager.del_order()
         else:  # 继续等
             pass
