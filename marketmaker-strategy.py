@@ -7,12 +7,11 @@ from utils import JSONDateTimeDecoder
 import datetime
 import time
 import uuid
-
+import argparse
 
 class OrderManager():
-    def __init__(self):
-        self.spot_api = spot_api.SpotAPI(config.sub_apikey, config.sub_secretkey,
-                                         config.sub_password, True)
+    def __init__(self, apikey, secretkey, password):
+        self.spot_api = spot_api.SpotAPI(apikey, secretkey, password, True)
         self.order_router = []
         self.sell_list = []
         self.buy_list = []
@@ -145,7 +144,6 @@ class OrderManager():
         # return order
 
     def cancel_order(self, order_id, instrument_id):
-        print('####cancel_order=>order_id==>', order_id)
         ret = self.spot_api.revoke_order(order_id, instrument_id)
         print('##cancel_order=>ret==>', ret)
         return ret
@@ -185,9 +183,10 @@ class OrderManager():
         return max_buy_price
 
 class Strategy():
-    def __init__(self):
+    def __init__(self, main_side, apikey, secretkey, password, limit_position):
         r = redis.Redis(
-            host='127.0.0.1',
+            host='127.0.0.1',   
+            # host='10.10.20.60',
             port=6379,
             password='nowdone2go',
             decode_responses=True)
@@ -197,14 +196,14 @@ class Strategy():
         self.quote = 'USDT'
         subscribe_msg = 'okex.order_book.EOS/USDT'
         self.ps.subscribe([subscribe_msg])  #订阅消息
-        self.order_manager = OrderManager()
+        self.order_manager = OrderManager(apikey, secretkey, password)
         self.spot_size = config.spot_step_size
-        self.limit_base_position_size = config.max_limit_base_position
+        self.limit_base_position_size = limit_position # config.max_limit_base_position
         self.t_rate = 1.0005 + 0.002 * 0.13
         self.last_bid_price = 0
         self.last_ask_price = 0
         self.init_base = 0
-        self.main_side = config.main_side
+        self.main_side = main_side
         self.order_cancel = 0
         self.order_submit = 0
         self.order_close = 0
@@ -224,12 +223,6 @@ class Strategy():
 
     #
     def signal(self, side, price):
-        # if self.last_bid_price != 0 and (self.last_bid_price/bid_one) < self.t_rate:
-        #         min_sell_price = self.order_manager.update_sell_list(ask_one)
-        #         self.last_bid_price = min_sell_price/self.t_rate
-        #         return
-        print('self.last_ask_price ==>',self.last_ask_price)
-        print('self.last_bid_price ==>',self.last_bid_price)
         if self.last_bid_price==0 or self.last_ask_price==0:
             return False
         if side == 'buy' and (self.last_bid_price / price) > self.t_rate:
@@ -291,6 +284,7 @@ class Strategy():
         if base_balance >= self.limit_base_position_size:  #position已经到上限
             print('###over position')
             return
+
         #====================================================================
         order_info = self.order_manager.get_last_order_info()
         print('order_info=>', order_info)
@@ -343,9 +337,49 @@ class Strategy():
                 self.handle_data(data)
 
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--side',
+        type=str,
+        default='buy',
+        help='main side')
+    parser.add_argument(
+        '--apikey',
+        type=str,
+        help='apikey')
+    parser.add_argument(
+        '--secretkey',
+        type=str,
+        help='secretkey')
+    parser.add_argument(
+        '--password',
+        type=str,
+        help='password')
+
+    parser.add_argument(
+        '--limit_position',
+        type=int,
+        help='limit_position')
+
+
+    args = parser.parse_args()
+
+    return args
+
+
 def main():
     print('#main start#')
-    strategy = Strategy()
+    args = parse_args()
+    print('args ==>', args)
+    side = args.side
+    apikey = args.apikey
+    secretkey = args.secretkey
+    password = args.password
+    limit_position = args.limit_position
+
+    # print('args ==>', args)
+    strategy = Strategy(main_side=side, apikey=apikey, secretkey=secretkey, password=password, limit_position=limit_position)
     strategy.run()
 
 
