@@ -285,6 +285,7 @@ if __name__ == '__main__':
         diff = None
         volume = 0
         for symbol in all_trade_log:
+            
             a = analysis_tradelog(all_trade_log[symbol],price = {})
             diff = a.cal_diff(diff)
             profit = a.cal_profit(diff,base = base_for_cal_profit)

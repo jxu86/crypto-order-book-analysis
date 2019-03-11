@@ -184,13 +184,13 @@ class OrderManager():
 
 class Strategy():
     def __init__(self, main_side, apikey, secretkey, password, limit_position):
-        r = redis.Redis(
+        self.r = redis.Redis(
             host='127.0.0.1',   
             # host='10.10.20.60',
             port=6379,
             password='nowdone2go',
             decode_responses=True)
-        self.ps = r.pubsub()
+        self.ps = self.r.pubsub()
         self.spot_pair = 'EOS-USDT'
         self.base = 'EOS'
         self.quote = 'USDT'
@@ -290,7 +290,9 @@ class Strategy():
         print('order_info=>', order_info)
         if order_info == None and self.strategy_status == 'start':  #下第一张单
             if (self.main_side == 'buy' and self.last_bid_price == 0) or (self.main_side == 'sell' and self.last_ask_price == 0) or self.signal(self.main_side, bast_price):
-                self.submit_order(self.main_side, bast_price)
+                order = self.submit_order(self.main_side, bast_price)
+                if order != None:
+                    self.r.sadd('jc_mm_submit_order', order['order_id'])
                 self.order_submit += 1
                 self.strategy_status = 'close'
             else:
@@ -309,7 +311,9 @@ class Strategy():
             if self.main_side == 'buy':
                 side = 'sell'
                 price = last_order_price * self.t_rate
-            self.submit_order(side, price, order_record=False, close_record=True)
+            order = self.submit_order(side, price, order_record=False, close_record=True)
+            if order != None:
+                self.r.sadd('jc_mm_close_order', order['order_id'])
             self.strategy_status = 'start'
             self.order_close += 1
             self.order_manager.del_order()
@@ -323,7 +327,9 @@ class Strategy():
 
         elif bast_price != last_order_price and self.strategy_status == 'close':
             # 撤销订单
-            self.order_manager.cancel_order(order_id, self.spot_pair)
+            order = self.order_manager.cancel_order(order_id, self.spot_pair)
+            if order != None:
+                self.r.sadd('jc_mm_cancel_order', order['order_id'])
             self.strategy_status = 'start'
             self.order_cancel += 1
             self.order_manager.del_order()
