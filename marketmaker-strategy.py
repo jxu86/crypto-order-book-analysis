@@ -8,6 +8,7 @@ import datetime
 import time
 import uuid
 import argparse
+import math
 
 class OrderManager():
     def __init__(self, apikey, secretkey, password):
@@ -307,10 +308,12 @@ class Strategy():
         if status == 'filled' and self.strategy_status == 'close':  # 已经fill
             # 下相反的订单,平仓
             price = last_order_price / self.t_rate
+            price = math.floor(price*1000)/1000
             side = 'buy'
             if self.main_side == 'buy':
                 side = 'sell'
                 price = last_order_price * self.t_rate
+                price = math.ceil(price*1000)/1000
             order = self.submit_order(side, price, order_record=False, close_record=True)
             if order != None:
                 self.r.sadd('jc_mm_close_order', order['order_id'])
@@ -337,10 +340,10 @@ class Strategy():
             pass
 
     def run(self):
-        for item in self.ps.listen():  #监听状态：有消息发布了就拿过来
-            if item['type'] == 'message':
-                data = json.loads(item['data'], cls=JSONDateTimeDecoder)
-                self.handle_data(data)
+         for item in self.ps.listen():  #监听状态：有消息发布了就拿过来
+             if item['type'] == 'message':
+                 data = json.loads(item['data'], cls=JSONDateTimeDecoder)
+                 self.handle_data(data)
 
 
 def parse_args():
