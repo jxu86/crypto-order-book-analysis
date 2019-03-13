@@ -290,6 +290,10 @@ class Strategy():
         order_info = self.order_manager.get_last_order_info()
         print('order_info=>', order_info)
         if order_info == None and self.strategy_status == 'start':  #下第一张单
+            if self.main_side == 'sell' and bast_price <= config.limit_sell_price: #限定最小
+                print('sell price is lte=>', config.limit_sell_price)
+                return
+                 
             if (self.main_side == 'buy' and self.last_bid_price == 0) or (self.main_side == 'sell' and self.last_ask_price == 0) or self.signal(self.main_side, bast_price):
                 order = self.submit_order(self.main_side, bast_price)
                 if order != None:
