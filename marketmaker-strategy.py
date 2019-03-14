@@ -215,7 +215,7 @@ class RiskControl():
 
     def calc_profit(self, side, price, bid_one, ask_one):
         if side == 'buy':
-            r = 1-price/bid_one
+            r = price/bid_one - 1
         elif side == 'sell':
             r = ask_one/price - 1
 
@@ -233,6 +233,7 @@ class RiskControl():
         # print('==>',list(orders[0]))
         open_orders = list(orders[0])
         cancel_order_ids = []
+        cancel_orders = []
         b_sizes = 0
         a_sizes = 0
         for order in open_orders:
@@ -243,47 +244,44 @@ class RiskControl():
             r = self.calc_profit(side, price, bid_one, ask_one)
 
             if r <= self.limit_loss:
-                cancel_order_ids.append(order['order_id'])
-                if side == 'buy':
-                    b_sizes += float(order['size'])
-                else:
-                    a_sizes += float(order['size'])
+                cancel_orders.append(order)
+                order = self.order_manager.cancel_order(order['order_id'], self.spot_pair)
         
             print('r==>', r, ' price==>', price)
-        print('cancel_order_ids=>', cancel_order_ids)
+        print('cancel_orders=>', cancel_orders)
         print('b_sizes=>', b_sizes)
         print('a_sizes=>', a_sizes)
-
-        if b_sizes == 0 and a_sizes == 0:
+        if len(cancel_orders) == 0:
             return
 
-        ret = self.order_manager.cancel_orders(self.spot_pair, cancel_order_ids)
-        print('cancel_orders=>ret', ret)
-        time.sleep(0.05)
-        if b_sizes > 0:
-            print('bid_one=>', bid_one)
-            self.order_manager.submit_spot_order(
-                                                client_oid='',
-                                                otype='limit',
-                                                side='buy',
-                                                instrument_id=self.spot_pair,
-                                                size=b_sizes,
-                                                price=bid_one,
-                                                notional='',
-                                                order_record=False,
-                                                close_record=False)
-        if a_sizes > 0:
-            print('bid_one=>', ask_one)
-            self.order_manager.submit_spot_order(
-                                                client_oid='',
-                                                otype='limit',
-                                                side='sell',
-                                                instrument_id=self.spot_pair,
-                                                size=a_sizes,
-                                                price=ask_one,
-                                                notional='',
-                                                order_record=False,
-                                                close_record=False)
+        time.sleep(0.1)
+        for o in cancel_orders:
+            if o['side'] == 'buy':
+                size = float(o['size']) * float(o['price']) / bid_one
+                size = math.floor(size*10000)/10000 
+                self.order_manager.submit_spot_order(
+                                        client_oid='',
+                                        otype='limit',
+                                        side='buy',
+                                        instrument_id=self.spot_pair,
+                                        size=size,
+                                        price=bid_one,
+                                        notional='',
+                                        order_record=False,
+                                        close_record=False)
+            elif o['side'] == 'sell':
+                size = float(o['size'])
+                self.order_manager.submit_spot_order(
+                                        client_oid='',
+                                        otype='limit',
+                                        side='sell',
+                                        instrument_id=self.spot_pair,
+                                        size=size,
+                                        price=ask_one,
+                                        notional='',
+                                        order_record=False,
+                                        close_record=False)
+
 
 
     def run(self):
