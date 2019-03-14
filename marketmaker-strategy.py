@@ -149,6 +149,10 @@ class OrderManager():
         print('##cancel_order=>ret==>', ret)
         return ret
 
+    def cancel_orders(self, instrument_id, order_ids):
+        ret = self.spot_api.revoke_orders(instrument_id, order_ids)
+        return ret
+
     def get_order_info(self, order_id, instrument_id):
         return self.spot_api.get_order_info(order_id, instrument_id)
 
@@ -158,6 +162,9 @@ class OrderManager():
         order = self.order_router[-1]
         return self.get_order_info(order['order']['order_id'],
                                    order['instrument_id'])
+
+    def get_orders_pending(self):
+        return self.spot_api.get_orders_pending(froms='', to='', limit='100')
 
     def update_sell_list(self, ask_price):
         new_sell_list = []
@@ -182,6 +189,110 @@ class OrderManager():
             max_buy_price = max([b['price'] for b in self.buy_list])
         print('#self.buy_list=>', self.buy_list)
         return max_buy_price
+
+class RiskControl():
+    def __init__(self, apikey, secretkey, password):
+        self.r = redis.Redis(
+            host='127.0.0.1',   
+            # host='10.10.20.60',
+            port=6379,
+            password='nowdone2go',
+            decode_responses=True)
+        self.order_manager = OrderManager(apikey, secretkey, password)
+        self.limit_loss = config.limit_loss
+        self.spot_pair = 'EOS-USDT'
+        self.ps = self.r.pubsub()
+        self.base = 'EOS'
+        self.quote = 'USDT'
+        subscribe_msg = 'okex.order_book.EOS/USDT'
+        self.ps.subscribe([subscribe_msg])  #订阅消息
+    
+    def get_orders_pending(self):
+        orders = self.order_manager.get_orders_pending()
+        orders = list(orders[0])
+        print('order=>', len(list(orders[0])))
+        return 
+
+    def calc_profit(self, side, price, bid_one, ask_one):
+        if side == 'buy':
+            r = 1-price/bid_one
+        elif side == 'sell':
+            r = ask_one/price - 1
+
+        return r
+
+    def handle_order(self, data):
+        if time.time() - data['datetime'].timestamp() > 0.1:  #延时大放弃
+            print('datetime==>', data['datetime'])
+            return
+        ask_one = data['asks'][-1]['price']
+        bid_one = data['bids'][0]['price']
+        print('ask_one=>', ask_one)
+        print('bid_one=>', bid_one)
+        orders = self.order_manager.get_orders_pending()
+        # print('==>',list(orders[0]))
+        open_orders = list(orders[0])
+        cancel_order_ids = []
+        b_sizes = 0
+        a_sizes = 0
+        for order in open_orders:
+            if order['status'] != 'open':
+                continue
+            side = order['side']
+            price = float(order['price'])
+            r = self.calc_profit(side, price, bid_one, ask_one)
+
+            if r <= self.limit_loss:
+                cancel_order_ids.append(order['order_id'])
+                if side == 'buy':
+                    b_sizes += float(order['size'])
+                else:
+                    a_sizes += float(order['size'])
+        
+            print('r==>', r, ' price==>', price)
+        print('cancel_order_ids=>', cancel_order_ids)
+        print('b_sizes=>', b_sizes)
+        print('a_sizes=>', a_sizes)
+
+        if b_sizes == 0 and a_sizes == 0:
+            return
+
+        ret = self.order_manager.cancel_orders(self.spot_pair, cancel_order_ids)
+        print('cancel_orders=>ret', ret)
+        time.sleep(0.05)
+        if b_sizes > 0:
+            print('bid_one=>', bid_one)
+            self.order_manager.submit_spot_order(
+                                                client_oid='',
+                                                otype='limit',
+                                                side='buy',
+                                                instrument_id=self.spot_pair,
+                                                size=b_sizes,
+                                                price=bid_one,
+                                                notional='',
+                                                order_record=False,
+                                                close_record=False)
+        if a_sizes > 0:
+            print('bid_one=>', ask_one)
+            self.order_manager.submit_spot_order(
+                                                client_oid='',
+                                                otype='limit',
+                                                side='sell',
+                                                instrument_id=self.spot_pair,
+                                                size=a_sizes,
+                                                price=ask_one,
+                                                notional='',
+                                                order_record=False,
+                                                close_record=False)
+
+
+    def run(self):
+        for item in self.ps.listen():  #监听状态：有消息发布了就拿过来
+             if item['type'] == 'message':
+                 data = json.loads(item['data'], cls=JSONDateTimeDecoder)
+                 self.handle_order(data)
+        
+
 
 class Strategy():
     def __init__(self, main_side, apikey, secretkey, password, limit_position):
@@ -240,6 +351,7 @@ class Strategy():
         elif side == 'sell':
             max_buy_price = self.order_manager.update_buy_list(price)
             self.last_ask_price = max_buy_price*self.t_rate
+
 
     def handle_data(self, data):
         if time.time() - data['datetime'].timestamp() > 0.1:  #延时大放弃
@@ -374,7 +486,11 @@ def parse_args():
         '--limit_position',
         type=int,
         help='limit_position')
-
+    parser.add_argument(
+        '--action',
+        type=str,
+        default='strategy',
+        help='action strategy or riskcontrol')
 
     args = parser.parse_args()
 
@@ -385,15 +501,22 @@ def main():
     print('#main start#')
     args = parse_args()
     print('args ==>', args)
-    side = args.side
+
     apikey = args.apikey
     secretkey = args.secretkey
     password = args.password
-    limit_position = args.limit_position
+    action = args.action
 
-    # print('args ==>', args)
-    strategy = Strategy(main_side=side, apikey=apikey, secretkey=secretkey, password=password, limit_position=limit_position)
-    strategy.run()
+    if action == 'riskcontrol':
+        risk_control = RiskControl(apikey, secretkey, password)
+        risk_control.run()
+    elif action == 'strategy':
+        side = args.side
+        limit_position = args.limit_position
+        strategy = Strategy(main_side=side, apikey=apikey, secretkey=secretkey, password=password, limit_position=limit_position)
+        strategy.run()
+    else:
+        print('wrong action')
 
 
 if __name__ == '__main__':
