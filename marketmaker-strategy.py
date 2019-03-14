@@ -259,6 +259,8 @@ class RiskControl():
             if o['side'] == 'buy':
                 size = float(o['size']) * float(o['price']) / bid_one
                 size = math.floor(size*10000)/10000 
+                if size < 0.1:
+                    size = 0.1
                 self.order_manager.submit_spot_order(
                                         client_oid='',
                                         otype='limit',
