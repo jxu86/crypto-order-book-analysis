@@ -9,6 +9,7 @@ import time
 import uuid
 import argparse
 import math
+from interval import Interval
 
 class OrderManager():
     def __init__(self, apikey, secretkey, password):
@@ -320,6 +321,8 @@ class Strategy():
         self.order_submit = 0
         self.order_close = 0
         self.strategy_status = 'start'
+        self.long_35_361 = Interval(3.5, 3.61)
+        self.long_37_381 = Interval(3.7, 3.81)
 
     def submit_order(self, side, price, order_record=True, close_record=False):
         return self.order_manager.submit_spot_order(
@@ -405,12 +408,16 @@ class Strategy():
             if self.main_side == 'sell' and bast_price <= config.limit_sell_price: #限定最小
                 print('sell price is lte=>', config.limit_sell_price)
                 return
-                 
+
+            if self.main_side == 'buy' and bast_price not in self.long_37_381:
+                print('####buy price not in buy zoom')
+                return
+                
             if (self.main_side == 'buy' and self.last_bid_price == 0) or (self.main_side == 'sell' and self.last_ask_price == 0) or self.signal(self.main_side, bast_price):
                 order = self.submit_order(self.main_side, bast_price)
                 if order != None:
-                    self.r.sadd('jc_mm_submit_order', order['order_id'])
-                self.order_submit += 1
+                    self.order_submit += 1
+                    # self.r.sadd('jc_mm_submit_order', order['order_id'])
                 self.strategy_status = 'close'
             else:
                 self.update_last_price(self.main_side, bast_c_price)
@@ -432,9 +439,9 @@ class Strategy():
                 price = math.ceil(price*1000)/1000
             order = self.submit_order(side, price, order_record=False, close_record=True)
             if order != None:
-                self.r.sadd('jc_mm_close_order', order['order_id'])
+                self.order_close += 1
+                # self.r.sadd('jc_mm_close_order', order['order_id'])
             self.strategy_status = 'start'
-            self.order_close += 1
             self.order_manager.del_order()
 
             # # 下新的订单开仓
@@ -448,9 +455,9 @@ class Strategy():
             # 撤销订单
             order = self.order_manager.cancel_order(order_id, self.spot_pair)
             if order != None:
-                self.r.sadd('jc_mm_cancel_order', order['order_id'])
+                self.order_cancel += 1
+                # self.r.sadd('jc_mm_cancel_order', order['order_id'])
             self.strategy_status = 'start'
-            self.order_cancel += 1
             self.order_manager.del_order()
         else:  # 继续等
             pass
