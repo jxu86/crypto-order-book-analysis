@@ -320,6 +320,8 @@ class Strategy():
         self.order_cancel = 0
         self.order_submit = 0
         self.order_close = 0
+        self.should_order_cancel = 0
+        self.should_order_close = 0
         self.strategy_status = 'start'
         self.long_35_361 = Interval(3.5, 3.61)
         self.long_37_381 = Interval(3.7, 3.81)
@@ -376,8 +378,9 @@ class Strategy():
         print('self.last_ask_price=>', self.last_ask_price)
 
         print('##order_submit==>', self.order_submit)
-        print('##order_close==>', self.order_close)
-        print('##order_cancel==>', self.order_cancel)
+        print('##order_close==>', self.order_close, 'should=>', self.should_order_close)
+        print('##order_cancel==>', self.order_cancel, 'should=>', self.should_order_cancel)
+
         print('##strategy_status==>', self.strategy_status)
 
         #检查position是否还可以下单, 用base作为控仓
@@ -441,6 +444,7 @@ class Strategy():
             if order != None:
                 self.order_close += 1
                 # self.r.sadd('jc_mm_close_order', order['order_id'])
+            self.should_order_close += 1
             self.strategy_status = 'start'
             self.order_manager.del_order()
 
@@ -457,6 +461,7 @@ class Strategy():
             if order != None:
                 self.order_cancel += 1
                 # self.r.sadd('jc_mm_cancel_order', order['order_id'])
+            self.should_order_cancel += 1
             self.strategy_status = 'start'
             self.order_manager.del_order()
         else:  # 继续等
@@ -484,7 +489,7 @@ def parse_args():
         '--secretkey',
         type=str,
         help='secretkey')
-    parser.add_argument(
+    parser.add_argument(q
         '--password',
         type=str,
         help='password')
