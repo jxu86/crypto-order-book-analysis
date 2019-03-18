@@ -489,7 +489,7 @@ def parse_args():
         '--secretkey',
         type=str,
         help='secretkey')
-    parser.add_argument(q
+    parser.add_argument(
         '--password',
         type=str,
         help='password')
