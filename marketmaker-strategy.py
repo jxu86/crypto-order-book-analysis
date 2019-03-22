@@ -323,8 +323,8 @@ class Strategy():
         self.should_order_cancel = 0
         self.should_order_close = 0
         self.strategy_status = 'start'
-        self.long_35_361 = Interval(3.5, 3.61)
-        self.long_37_381 = Interval(3.7, 3.81)
+        # self.long_36_361 = Interval(3.6, 3.65)
+        self.long_36_381 = Interval(3.6, 3.81)
         self.short_35_371 = Interval(3.5, 3.71)
 
     def submit_order(self, side, price, order_record=True, close_record=False):
@@ -414,7 +414,7 @@ class Strategy():
                 # print('sell price is lte=>', config.limit_sell_price)
                 return
 
-            if self.main_side == 'buy' and bast_price not in self.long_37_381:
+            if self.main_side == 'buy' and bast_price not in self.long_36_381:
                 print('####buy price not in buy zoom')
                 return
                 
