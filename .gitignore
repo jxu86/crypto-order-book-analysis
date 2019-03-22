@@ -115,3 +115,5 @@ data/
 *.html
 
 config/
+
+.DS_Store
