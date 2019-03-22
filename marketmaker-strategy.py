@@ -325,7 +325,7 @@ class Strategy():
         self.strategy_status = 'start'
         # self.long_36_361 = Interval(3.6, 3.65)
         self.long_36_381 = Interval(3.6, 3.81)
-        self.short_35_371 = Interval(3.5, 3.71)
+        self.short_3_37 = Interval(3, 3.7)
 
     def submit_order(self, side, price, order_record=True, close_record=False):
         return self.order_manager.submit_spot_order(
@@ -409,7 +409,7 @@ class Strategy():
         order_info = self.order_manager.get_last_order_info()
         print('order_info=>', order_info)
         if order_info == None and self.strategy_status == 'start':  #下第一张单
-            if self.main_side == 'sell' and bast_price not in self.short_35_371: #bast_price <= config.limit_sell_price: #限定最小
+            if self.main_side == 'sell' and bast_price not in self.short_3_37: #bast_price <= config.limit_sell_price: #限定最小
                 print('####sell price not in buy zoom')
                 # print('sell price is lte=>', config.limit_sell_price)
                 return
