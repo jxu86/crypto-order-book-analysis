@@ -192,7 +192,7 @@ class OrderManager():
         return max_buy_price
 
 class RiskControl():
-    def __init__(self, apikey, secretkey, password):
+    def __init__(self, apikey, secretkey, password, limit_position):
         self.r = redis.Redis(
             host='127.0.0.1',   
             # host='10.10.20.60',
@@ -207,6 +207,7 @@ class RiskControl():
         self.quote = 'USDT'
         subscribe_msg = 'okex.order_book.EOS/USDT'
         self.ps.subscribe([subscribe_msg])  #订阅消息
+        self.limit_base_position_size = limit_position
     
     def get_orders_pending(self):
         orders = self.order_manager.get_orders_pending()
@@ -226,6 +227,15 @@ class RiskControl():
         if time.time() - data['datetime'].timestamp() > 0.1:  #延时大放弃
             print('datetime==>', data['datetime'])
             return
+
+        base_position = self.order_manager.check_position(self.base)
+        
+        base_balance = float(base_position['balance'])
+
+        print('base_position=>', base_position, ' limit position=>', self.limit_base_position_size)
+        if base_balance <= self.limit_base_position_size:  #position已经到上限
+            return
+        
         ask_one = data['asks'][-1]['price']
         bid_one = data['bids'][0]['price']
         print('ask_one=>', ask_one)
