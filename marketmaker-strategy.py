@@ -567,13 +567,12 @@ def main():
     secretkey = args.secretkey
     password = args.password
     action = args.action
-
+    limit_position = args.limit_position
     if action == 'riskcontrol':
-        risk_control = RiskControl(apikey, secretkey, password)
+        risk_control = RiskControl(apikey, secretkey, password, limit_position)
         risk_control.run()
     elif action == 'strategy':
         side = args.side
-        limit_position = args.limit_position
         strategy = Strategy(main_side=side, apikey=apikey, secretkey=secretkey, password=password, limit_position=limit_position)
         strategy.run()
     else:
