@@ -237,14 +237,13 @@ class RiskControl():
         if len(sell_orders) == 0:
             return 
         # 找出price最大的订单
-        max_loss_sell_order = ret = max(lst, key=lambda dic: dic['price'])
+        max_loss_sell_order = max(lst, key=lambda dic: dic['price'])
 
         # cancel_order_ids = []
         cancel_orders = [max_loss_sell_order]
         # b_sizes = 0
         # a_sizes = 0
         # max_loss_order = None
-
 
         # for order in open_orders:
         #     if order['status'] != 'open':
