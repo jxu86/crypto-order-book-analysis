@@ -233,11 +233,11 @@ class RiskControl():
         orders = self.order_manager.get_orders_pending()
         # print('==>',list(orders[0]))
         open_orders = list(orders[0])
-        sell_orders = [o for o in orders if o['side'] == 'sell']
+        sell_orders = [o for o in open_orders if o['side'] == 'sell']
         if len(sell_orders) == 0:
             return 
         # 找出price最大的订单
-        max_loss_sell_order = max(lst, key=lambda dic: dic['price'])
+        max_loss_sell_order = max(sell_orders, key=lambda dic: dic['price'])
 
         # cancel_order_ids = []
         cancel_orders = [max_loss_sell_order]
