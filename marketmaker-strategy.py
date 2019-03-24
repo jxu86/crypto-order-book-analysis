@@ -246,19 +246,17 @@ class RiskControl():
         if base_balance < self.limit_base_position_size:  #position已经到上限
             return
 
-        if len(self.check_sell_order_status()) != 0:
-            return
-
         ask_one = data['asks'][-1]['price']
         bid_one = data['bids'][0]['price']
         print('ask_one=>', ask_one)
         print('bid_one=>', bid_one)
 
-        min_sell_order = min(self.sell_orders_history, key=lambda dic: dic['price'])
-        min_sell_price = float(min_sell_order['price'])
-        print('min_sell_price=>', min_sell_price)
-        if (min_sell_price/ask_one - 1) < 0.001:
-            return
+        if len(self.check_sell_order_status()):
+            min_sell_order = min(self.sell_orders_history, key=lambda dic: dic['price'])
+            min_sell_price = float(min_sell_order['price'])
+            print('min_sell_price=>', min_sell_price)
+            if (min_sell_price/ask_one - 1) < 0.001:
+                return
 
         orders = self.order_manager.get_orders_pending()
         open_orders = list(orders[0])
