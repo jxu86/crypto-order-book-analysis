@@ -208,6 +208,7 @@ class RiskControl():
         subscribe_msg = 'okex.order_book.EOS/USDT'
         self.ps.subscribe([subscribe_msg])  #订阅消息
         self.limit_base_position_size = limit_position
+        self.sell_orders_history = []
     
     def get_orders_pending(self):
         orders = self.order_manager.get_orders_pending()
@@ -223,25 +224,43 @@ class RiskControl():
 
         return r
 
+    def check_sell_order_status(self):
+        if len(self.sell_orders_history) == 0:
+            return
+        new_orders_history = []
+        for o in self.sell_orders_history:
+            order_info = self.order_manager.get_order_info(o['order_id'], self.spot_pair)
+            if order_info['status'] not in ['filled', 'cancelled']:
+                new_orders_history.append(order_info)  #更新新的结构
+        self.sell_orders_history = new_orders_history
+        return self.sell_orders_history
+
     def handle_order(self, data):
         if time.time() - data['datetime'].timestamp() > 0.1:  #延时大放弃
             print('datetime==>', data['datetime'])
             return
 
         base_position = self.order_manager.check_position(self.base)
-        
         base_balance = float(base_position['balance'])
-
         print('base_position=>', base_position, ' limit position=>', self.limit_base_position_size)
-        if base_balance <= self.limit_base_position_size:  #position已经到上限
+        if base_balance < self.limit_base_position_size:  #position已经到上限
             return
-        
+
+        if len (self.check_sell_order_status()) != 0:
+            return
+
         ask_one = data['asks'][-1]['price']
         bid_one = data['bids'][0]['price']
         print('ask_one=>', ask_one)
         print('bid_one=>', bid_one)
+
+        min_sell_order = min(self.sell_orders_history, key=lambda dic: dic['price'])
+        min_sell_price = min_sell_order['price']
+
+        if (min_sell_price/ask_one - 1) < 0.001:
+            return
+
         orders = self.order_manager.get_orders_pending()
-        # print('==>',list(orders[0]))
         open_orders = list(orders[0])
         sell_orders = [o for o in open_orders if o['side'] == 'sell']
         if len(sell_orders) == 0:
@@ -249,24 +268,9 @@ class RiskControl():
         # 找出price最大的订单
         max_loss_sell_order = max(sell_orders, key=lambda dic: dic['price'])
 
-        # cancel_order_ids = []
         cancel_orders = [max_loss_sell_order]
-        # b_sizes = 0
-        # a_sizes = 0
-        # max_loss_order = None
-
-        # for order in open_orders:
-        #     if order['status'] != 'open':
-        #         continue
-        #     side = order['side']
-        #     price = float(order['price'])
-        #     r = self.calc_profit(side, price, bid_one, ask_one)
-
-            # if r <= self.limit_loss:
-            #     cancel_orders.append(order)
-            #     order = self.order_manager.cancel_order(order['order_id'], self.spot_pair)
-            # print('r==>', r, ' price==>', price)
-
+        for o in cancel_orders:
+            order = self.order_manager.cancel_order(o['order_id'], self.spot_pair)
 
         print('cancel_orders=>', cancel_orders)
         # print('b_sizes=>', b_sizes)
@@ -274,37 +278,36 @@ class RiskControl():
         if len(cancel_orders) == 0:
             return
 
-        # time.sleep(0.1)
-        # for o in cancel_orders:
-        #     if o['side'] == 'buy':
-        #         size = float(o['size']) * float(o['price']) / bid_one
-        #         size = math.floor(size*10000)/10000 
-        #         if size < 0.1:
-        #             size = 0.1
-        #         self.order_manager.submit_spot_order(
-        #                                 client_oid='',
-        #                                 otype='limit',
-        #                                 side='buy',
-        #                                 instrument_id=self.spot_pair,
-        #                                 size=size,
-        #                                 price=bid_one,
-        #                                 notional='',
-        #                                 order_record=False,
-        #                                 close_record=False)
-        #     elif o['side'] == 'sell':
-        #         size = float(o['size'])
-        #         self.order_manager.submit_spot_order(
-        #                                 client_oid='',
-        #                                 otype='limit',
-        #                                 side='sell',
-        #                                 instrument_id=self.spot_pair,
-        #                                 size=size,
-        #                                 price=ask_one,
-        #                                 notional='',
-        #                                 order_record=False,
-        #                                 close_record=False)
-
-
+        time.sleep(0.1)
+        for o in cancel_orders:
+            # if o['side'] == 'buy':
+            #     size = float(o['size']) * float(o['price']) / bid_one
+            #     size = math.floor(size*10000)/10000 
+            #     if size < 0.1:
+            #         size = 0.1
+            #     self.order_manager.submit_spot_order(
+            #                             client_oid='',
+            #                             otype='limit',
+            #                             side='buy',
+            #                             instrument_id=self.spot_pair,
+            #                             size=size,
+            #                             price=bid_one,
+            #                             notional='',
+            #                             order_record=False,
+            #                             close_record=False)
+            if o['side'] == 'sell':
+                size = float(o['size'])
+                order_info = self.order_manager.submit_spot_order(
+                                        client_oid='',
+                                        otype='limit',
+                                        side='sell',
+                                        instrument_id=self.spot_pair,
+                                        size=size,
+                                        price=ask_one,
+                                        notional='',
+                                        order_record=False,
+                                        close_record=False)
+                self.sell_orders_history.append(order_info)
 
     def run(self):
         for item in self.ps.listen():  #监听状态：有消息发布了就拿过来
@@ -491,8 +494,13 @@ class Strategy():
             if order != None:
                 while True:
                     time.sleep(0.01)
-                    order_info = self.order_manager.get_order_info(order['order_id'], self.spot_pair)
-                    print('close order info =>', order_info)
+                    order_info = None
+                    try:
+                        order_info = self.order_manager.get_order_info(order['order_id'], self.spot_pair)
+                        print('close order info =>', order_info)
+                    except:
+                        print('read order status err =>', order['order_id'])
+                        
                     if order_info['status'] == 'failure':
                         self.fail_orders.append({'order_id': order['order_id'], 'side': side})
                         break
