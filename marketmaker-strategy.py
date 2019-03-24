@@ -554,7 +554,7 @@ def parse_args():
 
     parser.add_argument(
         '--limit_position',
-        type=int,
+        type=float,
         help='limit_position')
     parser.add_argument(
         '--action',
