@@ -463,9 +463,9 @@ class Strategy():
                 print('####sell price not in buy zoom')
                 return
 
-            if self.main_side == 'buy' and bast_price not in self.long_36_381:
-                print('####buy price not in buy zoom')
-                return
+            # if self.main_side == 'buy' and bast_price not in self.long_36_381:
+            #     print('####buy price not in buy zoom')
+            #     return
                 
             if (self.main_side == 'buy' and self.last_bid_price == 0) or (self.main_side == 'sell' and self.last_ask_price == 0) or self.signal(self.main_side, bast_price):
                 order = self.submit_order(self.main_side, bast_price)
@@ -500,7 +500,7 @@ class Strategy():
                         print('close order info =>', order_info)
                     except:
                         print('read order status err =>', order['order_id'])
-                        
+
                     if order_info['status'] == 'failure':
                         self.fail_orders.append({'order_id': order['order_id'], 'side': side})
                         break
