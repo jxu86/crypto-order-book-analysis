@@ -245,7 +245,7 @@ class RiskControl():
         print('base_position=>', base_position, ' limit position=>', self.limit_base_position_size)
         if base_balance < self.limit_base_position_size:  #position已经到上限
             return
-
+            
         ask_one = data['asks'][-1]['price']
         bid_one = data['bids'][0]['price']
         print('ask_one=>', ask_one)
@@ -374,7 +374,7 @@ class Strategy():
 
         if side == 'buy':
             min_sell_price = self.order_manager.update_sell_list(price)
-            self.last_bid_price = min_sell_price/self.t_rate
+            self.last_bid_price = math.floor(1000*min_sell_price/self.t_rate)/1000
         elif side == 'sell':
             max_buy_price = self.order_manager.update_buy_list(price)
             self.last_ask_price = max_buy_price*self.t_rate
