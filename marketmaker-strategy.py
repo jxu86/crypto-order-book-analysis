@@ -226,7 +226,7 @@ class RiskControl():
 
     def check_sell_order_status(self):
         if len(self.sell_orders_history) == 0:
-            return
+            return self.sell_orders_history
         new_orders_history = []
         for o in self.sell_orders_history:
             order_info = self.order_manager.get_order_info(o['order_id'], self.spot_pair)
