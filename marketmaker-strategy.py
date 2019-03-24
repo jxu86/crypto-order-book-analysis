@@ -255,8 +255,8 @@ class RiskControl():
         print('bid_one=>', bid_one)
 
         min_sell_order = min(self.sell_orders_history, key=lambda dic: dic['price'])
-        min_sell_price = min_sell_order['price']
-
+        min_sell_price = float(min_sell_order['price'])
+        print('min_sell_price=>', min_sell_price)
         if (min_sell_price/ask_one - 1) < 0.001:
             return
 
