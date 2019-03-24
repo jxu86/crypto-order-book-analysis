@@ -246,7 +246,7 @@ class RiskControl():
         if base_balance < self.limit_base_position_size:  #position已经到上限
             return
 
-        if len (self.check_sell_order_status()) != 0:
+        if len(self.check_sell_order_status()) != 0:
             return
 
         ask_one = data['asks'][-1]['price']
