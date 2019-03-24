@@ -494,7 +494,7 @@ class Strategy():
             if order != None:
                 while True:
                     time.sleep(0.01)
-                    order_info = None
+                    order_info = {'status': 'ordering'}
                     try:
                         order_info = self.order_manager.get_order_info(order['order_id'], self.spot_pair)
                         print('close order info =>', order_info)
@@ -506,6 +506,7 @@ class Strategy():
                         break
                     elif order_info['status'] != 'ordering':
                         break 
+
                 self.order_close += 1
             self.should_order_close += 1
             self.strategy_status = 'start'
