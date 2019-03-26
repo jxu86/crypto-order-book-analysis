@@ -88,27 +88,27 @@ class OrderManager():
             print('#######submit_spot_order=>e==>')
             return None
 
-        order_id = order_info['order_id']
-        if close_record and side == 'sell':
-            self.sell_list.append(
-                {
-                    'order_id': order_id,
-                    'instrument_id': instrument_id,
-                    'side': side,
-                    'price': price
-                }
-            )
-            print('#self.sell_list=>', self.sell_list)
-        elif close_record and side == 'buy':
-            self.buy_list.append(
-                {
-                    'order_id': order_id,
-                    'instrument_id': instrument_id,
-                    'side': side,
-                    'price': price
-                }
-            )
-            print('#self.buy_list=>', self.buy_list)
+        # order_id = order_info['order_id']
+        # if close_record and side == 'sell':
+        #     self.sell_list.append(
+        #         {
+        #             'order_id': order_id,
+        #             'instrument_id': instrument_id,
+        #             'side': side,
+        #             'price': price
+        #         }
+        #     )
+        #     print('#self.sell_list=>', self.sell_list)
+        # elif close_record and side == 'buy':
+        #     self.buy_list.append(
+        #         {
+        #             'order_id': order_id,
+        #             'instrument_id': instrument_id,
+        #             'side': side,
+        #             'price': price
+        #         }
+        #     )
+        #     print('#self.buy_list=>', self.buy_list)
 
         if order_record:
             self.del_order()
@@ -168,15 +168,22 @@ class OrderManager():
         return self.spot_api.get_orders_pending(froms='', to='', limit='100')
 
     def update_sell_list(self, ask_price):
-        new_sell_list = []
         min_sell_price = 0
-        for s in self.sell_list:
-            if s['price'] > ask_price:
-                new_sell_list.append(s)
-        self.sell_list = new_sell_list
-        if len(self.sell_list):
-            min_sell_price = min([s['price'] for s in self.sell_list])
-        print('#self.sell_list=>', self.sell_list)
+        orders = self.get_orders_pending()
+        orders = list(orders[0])
+        self.sell_list = [o for o in orders if o['side']=='sell']
+        if len(self.sell_list) == 0:
+            return min_sell_price
+        print('self.sell_list=>', self.sell_list)
+        for o in self.sell_list:
+            o['price'] = float(o['price'])
+            if o['price'] < ask_price:
+                continue
+            if min_sell_price == 0 or min_sell_price > o['price']:
+                min_sell_price = o['price']
+
+        # min_sell_price = min([s['price'] for s in self.sell_list])
+        print('#min_sell_price=>', min_sell_price)
         return min_sell_price
 
     def update_buy_list(self, bid_price):
@@ -343,11 +350,22 @@ class Strategy():
         self.should_order_cancel = 0
         self.should_order_close = 0
         self.strategy_status = 'start'
+        self.sell_flag = True
         self.long_36_381 = Interval(3.6, 3.81)
         self.short_3_37 = Interval(3, 3.7)
         self.current_order = None
         self.fail_orders = []
-
+        # self.update_sell_list()
+        
+    # def update_sell_list(self):
+    #     orders = self.order_manager.get_orders_pending()
+    #     orders = list(orders[0])
+    #     print('orders=>', orders)
+    #     self.order_manager.sell_list = [o for o in orders if o['side']=='sell']
+    #     for o in self.order_manager.sell_list:
+    #         o['price'] = float(o['price'])
+    #     print('self.order_manager.sell_list=>', self.order_manager.sell_list)
+        
     def submit_order(self, side, price, order_record=True, close_record=False):
         return self.order_manager.submit_spot_order(
             client_oid='',
@@ -403,7 +421,6 @@ class Strategy():
         return
 
 
-
     def exposure_control(self):
         pass
         
@@ -420,6 +437,10 @@ class Strategy():
             bast_price = ask_one
             bast_c_price = bid_one
 
+        if self.sell_flag:
+            self.update_last_price(self.main_side, bast_c_price)
+            self.sell_flag = False
+
         print('bid_one==>', bid_one)
         print('ask_one==>', ask_one)
         print('bast_price==>', bast_price)
@@ -433,7 +454,7 @@ class Strategy():
         print('##strategy_status==>', self.strategy_status)
 
         #检查position是否还可以下单, 用base作为控仓
-
+        
         base_symbol = self.base
         if self.main_side == 'sell':
             base_symbol = self.quote
@@ -470,9 +491,8 @@ class Strategy():
                 if order != None:
                     self.order_submit += 1
                 self.strategy_status = 'close'
-            else:
-                self.update_last_price(self.main_side, bast_c_price)
-
+            # else:
+                # self.update_last_price(self.main_side, bast_c_price)
             return
 
         status = order_info['status']
@@ -506,6 +526,7 @@ class Strategy():
                         break 
 
                 self.order_close += 1
+            self.sell_flag = True
             self.should_order_close += 1
             self.strategy_status = 'start'
             self.order_manager.del_order()
