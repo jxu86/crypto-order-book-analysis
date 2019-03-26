@@ -454,7 +454,7 @@ class Strategy():
         print('##strategy_status==>', self.strategy_status)
 
         #检查position是否还可以下单, 用base作为控仓
-        
+
         base_symbol = self.base
         if self.main_side == 'sell':
             base_symbol = self.quote
@@ -491,8 +491,9 @@ class Strategy():
                 if order != None:
                     self.order_submit += 1
                 self.strategy_status = 'close'
-            # else:
-                # self.update_last_price(self.main_side, bast_c_price)
+            else:
+                self.update_last_price(self.main_side, bast_c_price)
+                
             return
 
         status = order_info['status']
