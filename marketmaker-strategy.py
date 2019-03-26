@@ -355,6 +355,7 @@ class Strategy():
         self.short_3_37 = Interval(3, 3.7)
         self.current_order = None
         self.fail_orders = []
+        self.update_sell_list_count = 0
         # self.update_sell_list()
         
     # def update_sell_list(self):
@@ -436,7 +437,7 @@ class Strategy():
         if self.main_side == 'sell':
             bast_price = ask_one
             bast_c_price = bid_one
-
+        self.update_sell_list_count += 1
         if self.sell_flag:
             self.update_last_price(self.main_side, bast_c_price)
             self.sell_flag = False
@@ -491,8 +492,9 @@ class Strategy():
                 if order != None:
                     self.order_submit += 1
                 self.strategy_status = 'close'
-            else:
+            elif self.update_sell_list_count >= 10:
                 self.update_last_price(self.main_side, bast_c_price)
+                self.update_sell_list_count = 0
                 
             return
 
