@@ -13,6 +13,7 @@ class MongoService(object):
         self.order_router = self.db.order_router
         self.kline_1min = self.db.kline_1min
         self.kline_5min = self.db.kline_5min
+        self.kline_history_1min = self.db.kline_history_1min
         self.swap_funding_rate = self.db.swap_funding_rate
         self.swap_calc_rate = self.db.swap_calc_rate
 

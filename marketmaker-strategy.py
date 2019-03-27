@@ -512,7 +512,7 @@ class Strategy():
                 price = last_order_price * self.t_rate
                 price = math.ceil(price*1000)/1000
             order = self.submit_order(side, price, order_record=False, close_record=True)
-            if order != None:
+            if order != None and order['order_id'] != -1:
                 while True:
                     time.sleep(0.01)
                     order_info = {'status': 'ordering'}
