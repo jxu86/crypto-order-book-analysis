@@ -324,7 +324,8 @@ class SimulationEngine(object):
                        open=opens,
                        high=highs,
                        low=lows,
-                       close=closes)
+                       close=closes,
+                       name='kline')
         scatter_data.append(traces)
         fig = go.Figure(scatter_data, layout=layout)
         py.plot(fig, auto_open=True, filename='tmp-plot.html')
