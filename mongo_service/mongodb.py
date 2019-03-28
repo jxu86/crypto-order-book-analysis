@@ -6,7 +6,8 @@ class MongoService(object):
     def __init__(self, host, port, username='exchange_data', password='nowdone2go', authSource='exchange_data'):
         # self.conn = MongoClient(host=host, port=port, username=username, password=password, authSource=authSource)
         self.conn = MongoClient(host=host, port=port)
-        self.db = self.conn.exchange_data
+        # self.db = self.conn.exchange_data
+        self.db = self.conn.nowdone
         self.order = self.db.order
         self.account = self.db.account
         self.predict_info = self.db.predict_info
