@@ -526,6 +526,7 @@ class Strategy():
                         print('close order info =>', order_info)
                     except:
                         print('read order status err =>', order['order_id'])
+                        break
 
                     if order_info['status'] == 'failure':
                         self.fail_orders.append({'order_id': order['order_id'], 'side': side})
