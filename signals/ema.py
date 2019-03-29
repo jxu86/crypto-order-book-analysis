@@ -34,10 +34,10 @@ class EMASignal(object):
 
 
         # 
-        if fast_avg[-1] > slow_avg[-1] and fast_avg[-1] < fast_avg[-2] and fast_avg[-2] < fast_avg[-3]:
-            sig = 'close_buy'
+        # if fast_avg[-1] > slow_avg[-1] and fast_avg[-1] < fast_avg[-2] and fast_avg[-2] < fast_avg[-3]:
+        #     sig = 'close_buy'
         
-        if fast_avg[-1] < slow_avg[-1] and fast_avg[-1] > fast_avg[-2] and fast_avg[-2] > fast_avg[-3]:
-            sig = 'close_sell'
+        # if fast_avg[-1] < slow_avg[-1] and fast_avg[-1] > fast_avg[-2] and fast_avg[-2] > fast_avg[-3]:
+        #     sig = 'close_sell'
 
         return sig, fast_avg[-1], slow_avg[-1]

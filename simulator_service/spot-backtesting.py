@@ -97,7 +97,7 @@ class Broker(object):
         if side == 'buy':
             self.set_quote_use(amount)
         elif side == 'sell':
-            self.set_base_use(amount)
+            self.set_base_use(size)
 
         order_info = {
                 'order_id': str(uuid.uuid1()),
@@ -244,9 +244,32 @@ class SimulationEngine(object):
         
         portfolio = self._broker.get_portfolio
 
-        print('order_history==>', self._broker.order_history)
-        print('portfolio=>', portfolio)
+        # print('order_history==>', self._broker.order_history)
+        print('portfolio=>', portfolio[-1])
+        print('open orders=>', self._broker.order_router)
+        print('base free: ', self._broker.get_base_free())
+        print('base total: ', self._broker.get_base_total())
 
+        print('base use: ', self._broker.context['balance'][self.base]['use'])
+        print('quote free: ', self._broker.get_quote_free())
+        print('quote total: ', self._broker.get_quote_total())
+        buy_orders = [o for o in self._broker.order_history if o['side'] == 'buy']
+        sell_orders = [o for o in self._broker.order_history if o['side'] == 'sell']
+        buy_open_orders = [o for o in self._broker.order_router if o['side'] == 'buy']
+        sell_open_orders = [o for o in self._broker.order_router if o['side'] == 'sell']
+
+        buy_volume = sum([o['size'] for o in buy_orders])
+        sell_volume = sum([o['size'] for o in sell_orders])
+
+        print('buy order num: ', len(buy_orders))
+        print('sell order num: ', len(sell_orders))
+        print('buy volume: ', buy_volume)
+        print('sell volume: ', sell_volume)
+        print('buy open order num: ', len(buy_open_orders))
+        print('sell open order num: ', len(sell_open_orders))
+
+        print('cum return: ', round(((portfolio[-1]['market_value'] - 1000)/1000),6))
+        print('cum return: ', (portfolio[-1]['market_value'] - 1000)/1000)
         self.plot()
         
 
@@ -262,7 +285,7 @@ class SimulationEngine(object):
         # # signal, fast_avg, slow_avg = MacdSignal().signal(np.array(close_datas))
 
         if signal == 'buy':
-            order_info = self._broker.sumbit_order(self.pair, close, 1, time, 'buy')
+            order_info = self._broker.sumbit_order(self.pair, close, 10, time, 'buy')
         elif signal == 'sell':
             amount = self._broker.get_base_free()
             if amount >= 0:
@@ -321,11 +344,11 @@ class SimulationEngine(object):
         scatter_data.append(go.Scatter(x=portfolio_dt, y=market_value, name='market-value', mode = 'lines', yaxis='y2', marker=dict(color='green')))
 
         traces = go.Candlestick(x=dtime,
-                       open=opens,
-                       high=highs,
-                       low=lows,
-                       close=closes,
-                       name='kline')
+                                open=opens,
+                                high=highs,
+                                low=lows,
+                                close=closes,
+                                name='kline')
         scatter_data.append(traces)
         fig = go.Figure(scatter_data, layout=layout)
         py.plot(fig, auto_open=True, filename='tmp-plot.html')

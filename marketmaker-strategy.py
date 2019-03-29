@@ -202,7 +202,6 @@ class RiskControl():
     def __init__(self, apikey, secretkey, password, limit_position):
         self.r = redis.Redis(
             host='127.0.0.1',   
-            # host='10.10.20.60',
             port=6379,
             password='nowdone2go',
             decode_responses=True)
@@ -216,6 +215,8 @@ class RiskControl():
         self.ps.subscribe([subscribe_msg])  #订阅消息
         self.limit_base_position_size = limit_position
         self.sell_orders_history = []
+        self.cancel_order_num = 0
+        self.cancel_orders = []
     
     def get_orders_pending(self):
         orders = self.order_manager.get_orders_pending()
@@ -250,6 +251,8 @@ class RiskControl():
         base_position = self.order_manager.check_position(self.base)
         base_balance = float(base_position['balance'])
         print('base_position=>', base_position, ' limit position=>', self.limit_base_position_size)
+        print('cancel_order_num=>', self.cancel_order_num)
+        print('cancel_orders=>', self.cancel_orders)
         if base_balance < self.limit_base_position_size:  #position已经到上限
             return
             
@@ -276,6 +279,8 @@ class RiskControl():
         cancel_orders = [max_loss_sell_order]
         for o in cancel_orders:
             order = self.order_manager.cancel_order(o['order_id'], self.spot_pair)
+            self.cancel_order_num += 1
+            self.cancel_orders.append(o)
 
         print('cancel_orders=>', cancel_orders)
         # print('b_sizes=>', b_sizes)
