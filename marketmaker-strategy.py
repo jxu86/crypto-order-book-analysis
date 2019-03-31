@@ -456,8 +456,8 @@ class Strategy():
         kline_data = self.order_manager.get_kline(pair)
         kline_data.sort(key=lambda k: (k.get('datetime', 0)), reverse = True)
         kline_data = kline_data[:n]
-        highs = [k['high'] for k in kline_data] + ask_one
-        lows = [k['low'] for k in kline_data] + bid_one
+        highs = [k['high'] for k in kline_data] + [ask_one]
+        lows = [k['low'] for k in kline_data] + [bid_one]
         upper_band = max(highs)
         lower_band = min(lows)
         spread = upper_band - lower_band
@@ -494,7 +494,7 @@ class Strategy():
 
         self.band_calc_count += 1
         if self.band_calc_count > 30:
-            band_calc_count = 0
+            self.band_calc_count = 0
             self.spread, self.upper_band, self.lower_band = self.calc_high_low_spread(self.spot_pair, ask_one, bid_one)
         if self.spread > 0.02 and bast_price > self.upper_band:
             print('spread limit=>', spread)
