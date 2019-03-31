@@ -164,6 +164,9 @@ class OrderManager():
         return self.get_order_info(order['order']['order_id'],
                                    order['instrument_id'])
 
+    def get_kline(self, instrument_id='EOS-USDT', start='', end='', granularity=60):
+        klines = self.spot_api.get_kline(instrument_id, start, end, granularity)
+
     def get_orders_pending(self):
         return self.spot_api.get_orders_pending(froms='', to='', limit='100')
 
@@ -361,6 +364,10 @@ class Strategy():
         self.current_order = None
         self.fail_orders = []
         self.update_sell_list_count = 0
+        self.band_calc_count = 0
+        self.spread = 0 
+        self.upper_band = 0
+        self.lower_band = 0
         # self.update_sell_list()
         
     # def update_sell_list(self):
@@ -429,7 +436,17 @@ class Strategy():
 
     def exposure_control(self):
         pass
-        
+
+
+    def calc_high_low_spread(self, pair, n=55):
+        kline_data = self.order_manager.get_kline(pair)
+        kline_data.sort(key=lambda k: (k.get('datetime', 0)), reverse = True)
+        kline_data = kline_data[:n]
+        upper_band = max(kline_data) #talib.MAX(highs, n)[-1]
+        lower_band = min(kline_data) #talib.MIN(lows, n)[-1]
+        spread = upper_band - lower_band
+        print('spread =>', spread,'upper_band=>', upper_band, 'lower_band=>', lower_band)
+        return spread, upper_band, lower_band
 
     def handle_data(self, data):
         if time.time() - data['datetime'].timestamp() > 0.1:  #延时大放弃
@@ -459,8 +476,15 @@ class Strategy():
         print('##order_cancel==>', self.order_cancel, 'should=>', self.should_order_cancel)
         print('##strategy_status==>', self.strategy_status)
 
-        #检查position是否还可以下单, 用base作为控仓
+        self.band_calc_count += 1
+        if self.band_calc_count > 30:
+            band_calc_count = 0
+            self.spread, self.upper_band, self.lower_band = self.calc_high_low_spread(self.spot_pair)
+        if self.spread > 0.02 and bast_price > self.upper_band:
+            print('spread limit=>', spread)
+            return 
 
+        #检查position是否还可以下单, 用base作为控仓
         base_symbol = self.base
         if self.main_side == 'sell':
             base_symbol = self.quote

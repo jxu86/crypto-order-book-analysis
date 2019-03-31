@@ -5,6 +5,7 @@ from signals.macd import MacdSignal
 from signals.ema import EMASignal
 from signals.kdj import KDJignal
 from signals.sar import SARSignal
+from signals.stability import SDSignal
 import config
 import uuid 
 import datetime
@@ -156,7 +157,7 @@ class SimulationEngine(object):
         self.path = ''
         self._broker = broker
         self._data_type = data_type
-        self._mongodb = MongoService(host='10.10.20.90', port=57017)
+        self._mongodb = MongoService(host='127.0.0.1', port=27017)
         self.data_pointer = 0
         self.data_array = self.load_data()
         self.data_len = len(self.data_array)
@@ -273,7 +274,7 @@ class SimulationEngine(object):
         self.plot()
         
 
-    def strategy(self, bar):
+    def strategy_ema(self, bar):
         
         h_data = self.get_data(limit=101)
         if len(h_data) <= 0:
@@ -297,6 +298,32 @@ class SimulationEngine(object):
             'slow_avg': slow_avg
         })
 
+    def strategy(self, bar):
+        
+        h_data = self.get_data(limit=61)
+        if len(h_data) <= 60:
+            return
+        close_datas = [float(k['close']) for k in h_data]
+        close = float(bar['close'])
+        time = bar['datetime']
+        signal,mean,std,var= SDSignal().signal(close_datas)
+
+        opens = np.array([float(d['open']) for d in h_data])
+        highs = np.array([float(d['high']) for d in h_data])
+        lows = np.array([float(d['low']) for d in h_data])
+        upper_band = talib.MAX(highs, 55)[-1]
+        lower_band = talib.MIN(lows, 55)[-1]
+
+
+        self.indicate.append({
+            'datetime': bar['datetime'],
+            'std': std,
+            'mean': mean,
+            'var': var,
+            'upper_band': upper_band,
+            'lower_band': lower_band
+        })
+
     
     def plot(self):
         scatter_data = []
@@ -306,23 +333,48 @@ class SimulationEngine(object):
         lows = [float(d['low']) for d in self.data_array]
         dtime = [d['datetime'] for d in self.data_array]
 
-        fast_avg = pd.Series(
+        # fast_avg = pd.Series(
+        #     index=[p['datetime'] for p in self.indicate],
+        #     data=[p['fast_avg'] for p in self.indicate])
+
+        # slow_avg = pd.Series(
+        #     index=[p['datetime'] for p in self.indicate],
+        #     data=[p['slow_avg'] for p in self.indicate])
+
+
+        dt = [p['datetime'] for p in self.indicate]
+        mean = pd.Series(
             index=[p['datetime'] for p in self.indicate],
-            data=[p['fast_avg'] for p in self.indicate])
+            data=[p['mean'] for p in self.indicate])
 
-        slow_avg = pd.Series(
+        std = pd.Series(
             index=[p['datetime'] for p in self.indicate],
-            data=[p['slow_avg'] for p in self.indicate])
+            data=[p['std'] for p in self.indicate])
 
 
+        std_limit = pd.Series(
+            index= dt,
+            data=[0.006]*len(dt))
 
-        trade_buy = pd.Series(
-            index=[p['datetime'] for p in self._broker.order_history if p['status'] == 'filled' and p['side'] == 'buy'],
-            data=[p['price'] for p in self._broker.order_history if p['status'] == 'filled' and p['side'] == 'buy'])
+        var = pd.Series(
+            index=[p['datetime'] for p in self.indicate],
+            data=[p['var'] for p in self.indicate])
 
-        trade_sell = pd.Series(
-            index=[p['datetime'] for p in self._broker.order_history if p['status'] == 'filled' and p['side'] == 'sell'],
-            data=[p['price'] for p in self._broker.order_history if p['status'] == 'filled' and p['side'] == 'sell'])
+        upper_band = pd.Series(
+            index=[p['datetime'] for p in self.indicate],
+            data=[p['upper_band'] for p in self.indicate])
+
+        lower_band = pd.Series(
+            index=[p['datetime'] for p in self.indicate],
+            data=[p['lower_band'] for p in self.indicate])
+
+        # trade_buy = pd.Series(
+        #     index=[p['datetime'] for p in self._broker.order_history if p['status'] == 'filled' and p['side'] == 'buy'],
+        #     data=[p['price'] for p in self._broker.order_history if p['status'] == 'filled' and p['side'] == 'buy'])
+
+        # trade_sell = pd.Series(
+        #     index=[p['datetime'] for p in self._broker.order_history if p['status'] == 'filled' and p['side'] == 'sell'],
+        #     data=[p['price'] for p in self._broker.order_history if p['status'] == 'filled' and p['side'] == 'sell'])
 
         layout = go.Layout(
             xaxis = dict(domain = [0.05,0.95]),
@@ -332,16 +384,22 @@ class SimulationEngine(object):
             yaxis4 = dict(title = 'total_quote',anchor = 'free',overlaying = 'y',titlefont = dict(color = 'red'),tickfont = dict(color = 'red'))
         )
 
-        scatter_data.append(go.Scatter(x=fast_avg.index, y=fast_avg, name='fast_avg'))
-        scatter_data.append(go.Scatter(x=slow_avg.index, y=slow_avg, name='slow_avg'))
 
-        scatter_data.append(go.Scatter(x=trade_buy.index, y=trade_buy, name='trade_buy', mode = 'markers', marker=dict(color='red')))
-        scatter_data.append(go.Scatter(x=trade_sell.index, y=trade_sell, name='trade_sell', mode = 'markers', marker=dict(color='blue')))
+        # scatter_data.append(go.Scatter(x=fast_avg.index, y=fast_avg, name='fast_avg'))
+        # scatter_data.append(go.Scatter(x=slow_avg.index, y=slow_avg, name='slow_avg'))
+        scatter_data.append(go.Scatter(x=mean.index, y=mean, name='mean'))
+        scatter_data.append(go.Scatter(x=upper_band.index, y=upper_band, name='upper_band'))
+        scatter_data.append(go.Scatter(x=lower_band.index, y=lower_band, name='lower_band'))
+        scatter_data.append(go.Scatter(x=std.index, y=std, name='std', yaxis='y3'))
+        scatter_data.append(go.Scatter(x=std_limit.index, y=std_limit, name='std-limit', yaxis='y3'))
+        # scatter_data.append(go.Scatter(x=var.index, y=var, name='var', yaxis='y4'))
+        # scatter_data.append(go.Scatter(x=trade_buy.index, y=trade_buy, name='trade_buy', mode = 'markers', marker=dict(color='red')))
+        # scatter_data.append(go.Scatter(x=trade_sell.index, y=trade_sell, name='trade_sell', mode = 'markers', marker=dict(color='blue')))
         # scatter_data.append(go.Scatter(x=trade_close.index, y=trade_close, name='trade_close', mode = 'markers', marker=dict(color='green')))
         portfolio = self._broker.get_portfolio
         portfolio_dt = [p['datetime'] for p in portfolio]
         market_value = [p['market_value'] for p in portfolio]
-        scatter_data.append(go.Scatter(x=portfolio_dt, y=market_value, name='market-value', mode = 'lines', yaxis='y2', marker=dict(color='green')))
+        # scatter_data.append(go.Scatter(x=portfolio_dt, y=market_value, name='market-value', mode = 'lines', yaxis='y2', marker=dict(color='green')))
 
         traces = go.Candlestick(x=dtime,
                                 open=opens,
@@ -356,8 +414,8 @@ class SimulationEngine(object):
 def main():
     print('#main start#')
     pair = 'EOS/USDT'
-    stime = datetime.datetime(2019,3,21)
-    etime = datetime.datetime(2019,3,22)
+    stime = datetime.datetime(2019,3,22)
+    etime = datetime.datetime(2019,3,23)
     broker = Broker(pair)
     simulation = SimulationEngine(broker, pair, stime, etime)
     simulation.run()
