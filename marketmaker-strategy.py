@@ -3,6 +3,7 @@ import redis
 import json
 import okex.spot_api as spot_api
 import config
+import utils
 from utils import JSONDateTimeDecoder
 import datetime
 import time
@@ -10,6 +11,7 @@ import uuid
 import argparse
 import math
 from interval import Interval
+
 
 class OrderManager():
     def __init__(self, apikey, secretkey, password):
@@ -164,8 +166,20 @@ class OrderManager():
         return self.get_order_info(order['order']['order_id'],
                                    order['instrument_id'])
 
-    def get_kline(self, instrument_id='EOS-USDT', start='', end='', granularity=60):
+    def get_kline(self, instrument_id, start='', end='', granularity=60):
+        # instrument_id = instrument_id.replace('/', '-')
         klines = self.spot_api.get_kline(instrument_id, start, end, granularity)
+
+        fields = ['timestamp', 'open', 'high', 'low', 'close', 'volume']
+        kline_datas = [dict(zip(fields, r)) for r in klines]
+        for k in kline_datas:
+            k['datetime'] = utils.utcstr_to_datetime(k['timestamp'])
+            k['open'] = float(k['open'])
+            k['high'] = float(k['high'])
+            k['low'] = float(k['low'])
+            k['close'] = float(k['close'])
+            k['volume'] = float(k['volume'])
+        return kline_datas
 
     def get_orders_pending(self):
         return self.spot_api.get_orders_pending(froms='', to='', limit='100')
@@ -438,12 +452,14 @@ class Strategy():
         pass
 
 
-    def calc_high_low_spread(self, pair, n=55):
+    def calc_high_low_spread(self, pair, ask_one, bid_one, n=30):
         kline_data = self.order_manager.get_kline(pair)
         kline_data.sort(key=lambda k: (k.get('datetime', 0)), reverse = True)
         kline_data = kline_data[:n]
-        upper_band = max(kline_data) #talib.MAX(highs, n)[-1]
-        lower_band = min(kline_data) #talib.MIN(lows, n)[-1]
+        highs = [k['high'] for k in kline_data] + ask_one
+        lows = [k['low'] for k in kline_data] + bid_one
+        upper_band = max(highs)
+        lower_band = min(lows)
         spread = upper_band - lower_band
         print('spread =>', spread,'upper_band=>', upper_band, 'lower_band=>', lower_band)
         return spread, upper_band, lower_band
@@ -479,7 +495,7 @@ class Strategy():
         self.band_calc_count += 1
         if self.band_calc_count > 30:
             band_calc_count = 0
-            self.spread, self.upper_band, self.lower_band = self.calc_high_low_spread(self.spot_pair)
+            self.spread, self.upper_band, self.lower_band = self.calc_high_low_spread(self.spot_pair, ask_one, bid_one)
         if self.spread > 0.02 and bast_price > self.upper_band:
             print('spread limit=>', spread)
             return 
@@ -579,10 +595,10 @@ class Strategy():
             pass
 
     def run(self):
-         for item in self.ps.listen():  #监听状态：有消息发布了就拿过来
-             if item['type'] == 'message':
-                 data = json.loads(item['data'], cls=JSONDateTimeDecoder)
-                 self.handle_data(data)
+          for item in self.ps.listen():  #监听状态：有消息发布了就拿过来
+              if item['type'] == 'message':
+                  data = json.loads(item['data'], cls=JSONDateTimeDecoder)
+                  self.handle_data(data)
 
 def parse_args():
     parser = argparse.ArgumentParser()
