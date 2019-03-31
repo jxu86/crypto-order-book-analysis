@@ -497,7 +497,7 @@ class Strategy():
             self.band_calc_count = 0
             self.spread, self.upper_band, self.lower_band = self.calc_high_low_spread(self.spot_pair, ask_one, bid_one)
         if self.spread > 0.02 and bast_price > self.upper_band:
-            print('spread limit=>', spread)
+            print('spread limit=>', self.spread)
             return 
 
         #检查position是否还可以下单, 用base作为控仓
