@@ -157,14 +157,18 @@ class SimulationEngine(object):
         self.path = ''
         self._broker = broker
         self._data_type = data_type
-        self._mongodb = MongoService(host='127.0.0.1', port=27017)
+        self._mongodb = MongoService(host='10.10.20.90', port=57017)
         self.data_pointer = 0
         self.data_array = self.load_data()
         self.data_len = len(self.data_array)
         self.current_time = self.data_array[0]['datetime']
         self.indicate = []
         self.count = 0
-        
+        self.order_count = 0
+        self.non_trading = []
+        self.non_trading_tmp = []
+        self.tttmp = []
+        # self.std_mean
 
     def _load_csv(self, path):
         csv_data = open(path, 'r')
@@ -299,33 +303,96 @@ class SimulationEngine(object):
         })
 
     def strategy(self, bar):
-        
+        # print('bar=>', bar)
         h_data = self.get_data(limit=61)
         if len(h_data) <= 60:
             return
         close_datas = [float(k['close']) for k in h_data]
         close = float(bar['close'])
         time = bar['datetime']
-        signal,mean,std,var= SDSignal().signal(close_datas)
+        
+        signal, fast_avg, slow_avg= EMASignal().signal(np.array(close_datas))
 
         opens = np.array([float(d['open']) for d in h_data])
         highs = np.array([float(d['high']) for d in h_data])
         lows = np.array([float(d['low']) for d in h_data])
-        upper_band = talib.MAX(highs, 55)[-1]
-        lower_band = talib.MIN(lows, 55)[-1]
+        upper_band = talib.MAX(highs, 20)[-1]
+        lower_band = talib.MIN(lows, 20)[-1]
+        spread = upper_band - lower_band
+
+        # if close > upper_band and close > slow_avg and spread > 0.05 and self.order_count == 0:
+        #     self.order_count += 1
+        #     print('submit order=>order router=>', self._broker.order_router)
+        #     order_info = self._broker.sumbit_order(self.pair, close, 50, time, 'buy')
+        # elif close < slow_avg:
+        #     amount = self._broker.get_base_free()
+        #     if amount > 0:
+        #         self.order_count = 0
+        #         print('amount=>', amount)
+        #         order_info = self._broker.sumbit_order(self.pair, close, amount, time, 'sell')
+        signal,mean,std,var= SDSignal(20).signal(close_datas)
+        cov_limit = 0.0016
+        cov = std/mean
+        if cov < cov_limit:
+            self.non_trading_tmp.append({
+                'datetime': bar['datetime'],
+                'value': 1,
+                'close': close
+            })
+        else:
+            if len(self.non_trading_tmp) > 60:
+                # print('#####=>', len(self.non_trading_tmp))
+                # self.non_trading += self.non_trading_tmp
+                max_v = max([n['close'] for n in self.non_trading_tmp])
+                min_v = min([n['close'] for n in self.non_trading_tmp])
+                if (max_v-min_v)/min_v > 0.011:
+                    for t in self.non_trading_tmp:
+                        t['value'] = -1
+                else:
+                    if len(self.non_trading_tmp):
+                        tmp = {'account_name': 'ZxieKalengo4',
+                            'pair': 'TRX/ETH',
+                            'stime': min([n['datetime'] for n in self.non_trading_tmp]),
+                            'etime': max([n['datetime'] for n in self.non_trading_tmp]),
+                            'resample_type': '1T'}
+                    self.tttmp.append(tmp)
+                    print(tmp)
+
+                self.non_trading += self.non_trading_tmp
+            else:
+                for t in self.non_trading_tmp:
+                    t['value'] = -1
+                self.non_trading += self.non_trading_tmp
+
+                if len(self.non_trading_tmp) == 0:
+                    self.non_trading.append({
+                        'datetime': bar['datetime'],
+                        'value': -1
+                    })
+
+            self.non_trading_tmp = []
 
 
+
+        
         self.indicate.append({
             'datetime': bar['datetime'],
             'std': std,
             'mean': mean,
             'var': var,
             'upper_band': upper_band,
-            'lower_band': lower_band
+            'lower_band': lower_band,
+            'slow_avg': slow_avg,
+            'fast_avg': fast_avg,
+            'cov': cov
         })
+        # if len(self.indicate) % 60 == 0:
+
+
 
     
     def plot(self):
+        print(self.tttmp)
         scatter_data = []
         closes = [float(d['close']) for d in self.data_array]
         opens = [float(d['open']) for d in self.data_array]
@@ -333,13 +400,13 @@ class SimulationEngine(object):
         lows = [float(d['low']) for d in self.data_array]
         dtime = [d['datetime'] for d in self.data_array]
 
-        # fast_avg = pd.Series(
-        #     index=[p['datetime'] for p in self.indicate],
-        #     data=[p['fast_avg'] for p in self.indicate])
+        fast_avg = pd.Series(
+            index=[p['datetime'] for p in self.indicate],
+            data=[p['fast_avg'] for p in self.indicate])
 
-        # slow_avg = pd.Series(
-        #     index=[p['datetime'] for p in self.indicate],
-        #     data=[p['slow_avg'] for p in self.indicate])
+        slow_avg = pd.Series(
+            index=[p['datetime'] for p in self.indicate],
+            data=[p['slow_avg'] for p in self.indicate])
 
 
         dt = [p['datetime'] for p in self.indicate]
@@ -351,10 +418,22 @@ class SimulationEngine(object):
             index=[p['datetime'] for p in self.indicate],
             data=[p['std'] for p in self.indicate])
 
+        cov = pd.Series(
+            index=[p['datetime'] for p in self.indicate],
+            data=[p['cov'] for p in self.indicate])
+
+        non_trend = pd.Series(
+            index=[p['datetime'] for p in self.non_trading],
+            data=[p['value'] for p in self.non_trading])
+
+
+        # std_limit = pd.Series(
+        #     index= dt,
+        #     data=[np.mean([p['std'] for p in self.indicate])]*len(dt))
 
         std_limit = pd.Series(
             index= dt,
-            data=[0.006]*len(dt))
+            data=[np.mean([p['std'] for p in self.indicate])]*len(dt))
 
         var = pd.Series(
             index=[p['datetime'] for p in self.indicate],
@@ -368,15 +447,16 @@ class SimulationEngine(object):
             index=[p['datetime'] for p in self.indicate],
             data=[p['lower_band'] for p in self.indicate])
 
-        # trade_buy = pd.Series(
-        #     index=[p['datetime'] for p in self._broker.order_history if p['status'] == 'filled' and p['side'] == 'buy'],
-        #     data=[p['price'] for p in self._broker.order_history if p['status'] == 'filled' and p['side'] == 'buy'])
+        trade_buy = pd.Series(
+            index=[p['datetime'] for p in self._broker.order_history if p['status'] == 'filled' and p['side'] == 'buy'],
+            data=[p['price'] for p in self._broker.order_history if p['status'] == 'filled' and p['side'] == 'buy'])
 
-        # trade_sell = pd.Series(
-        #     index=[p['datetime'] for p in self._broker.order_history if p['status'] == 'filled' and p['side'] == 'sell'],
-        #     data=[p['price'] for p in self._broker.order_history if p['status'] == 'filled' and p['side'] == 'sell'])
+        trade_sell = pd.Series(
+            index=[p['datetime'] for p in self._broker.order_history if p['status'] == 'filled' and p['side'] == 'sell'],
+            data=[p['price'] for p in self._broker.order_history if p['status'] == 'filled' and p['side'] == 'sell'])
 
         layout = go.Layout(
+            title = self.pair,
             xaxis = dict(domain = [0.05,0.95]),
             yaxis = dict(title = 'amount',titlefont = dict(color = 'blue'),tickfont = dict(color = 'blue')),
             yaxis2 = dict(title = 'alpha',anchor = 'free',overlaying = 'y',side = 'right',position = 1),
@@ -390,8 +470,10 @@ class SimulationEngine(object):
         scatter_data.append(go.Scatter(x=mean.index, y=mean, name='mean'))
         scatter_data.append(go.Scatter(x=upper_band.index, y=upper_band, name='upper_band'))
         scatter_data.append(go.Scatter(x=lower_band.index, y=lower_band, name='lower_band'))
-        scatter_data.append(go.Scatter(x=std.index, y=std, name='std', yaxis='y3'))
-        scatter_data.append(go.Scatter(x=std_limit.index, y=std_limit, name='std-limit', yaxis='y3'))
+        # scatter_data.append(go.Scatter(x=std.index, y=std, name='std', yaxis='y3'))
+        scatter_data.append(go.Scatter(x=cov.index, y=cov, name='cov', yaxis='y3'))
+        scatter_data.append(go.Scatter(x=non_trend.index, y=non_trend, name='non_trend', yaxis='y4'))
+        # scatter_data.append(go.Scatter(x=std_limit.index, y=std_limit, name='std-limit', yaxis='y3'))
         # scatter_data.append(go.Scatter(x=var.index, y=var, name='var', yaxis='y4'))
         # scatter_data.append(go.Scatter(x=trade_buy.index, y=trade_buy, name='trade_buy', mode = 'markers', marker=dict(color='red')))
         # scatter_data.append(go.Scatter(x=trade_sell.index, y=trade_sell, name='trade_sell', mode = 'markers', marker=dict(color='blue')))
@@ -413,9 +495,12 @@ class SimulationEngine(object):
 
 def main():
     print('#main start#')
-    pair = 'EOS/USDT'
-    stime = datetime.datetime(2019,3,22)
-    etime = datetime.datetime(2019,3,23)
+    pair = 'TRX/ETH'
+    # pair = 'EOS/USDT'
+    stime = datetime.datetime(2019,3,30)
+    etime = datetime.datetime(2019,4,2)
+    # stime = datetime.datetime(2019,3,31,12)
+    # etime = datetime.datetime(2019,4,10)
     broker = Broker(pair)
     simulation = SimulationEngine(broker, pair, stime, etime)
     simulation.run()
