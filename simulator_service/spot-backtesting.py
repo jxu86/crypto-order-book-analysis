@@ -6,6 +6,7 @@ from signals.ema import EMASignal
 from signals.kdj import KDJignal
 from signals.sar import SARSignal
 from signals.stability import SDSignal
+from signals.net_grid import NetGridSignal
 import config
 import uuid 
 import datetime
@@ -51,6 +52,9 @@ class Broker(object):
 
     def get_quote_total(self):
         return self.context['balance'][self.quote]['total']
+
+    def get_position(self):
+        return self.context['balance'][self.base]['total']
 
     def set_quote_use(self, amount):
         self.context['balance'][self.quote]['free'] -= amount
@@ -169,6 +173,8 @@ class SimulationEngine(object):
         self.non_trading = []
         self.non_trading_tmp = []
         self.tttmp = []
+        self.context = {}
+        
         # self.std_mean
 
     def _load_csv(self, path):
@@ -304,6 +310,41 @@ class SimulationEngine(object):
         })
 
     def strategy(self, bar):
+
+        if self.count%1440==0:
+            h_data = self.get_data(limit=101)
+            if len(h_data) <= 100:
+                return
+            close_datas = [float(k['close']) for k in h_data]
+            self.context['band'], self.context['weight'] = NetGridSignal().signal(close_datas)
+        self.count += 1
+
+        if 'band' not in self.context or len(self.context['band']) == 0:
+            return
+
+        close = float(bar['close'])
+        # print('band=>', self.context['band'])
+        # print('close=>', close)
+        # grid = pd.cut([close], self.context['band'], labels=[0, 1, 2, 3, 4, 5, 6, 7, 8])[0]
+        # print('grid=>', grid)
+        
+        bands = {
+            'datetime': bar['datetime']
+        }
+        i = 0
+        for band in self.context['band']:
+            i += 1
+            name = 'b' + str(i)
+            bands[name] = band
+
+        if 'net_grid_band' in self.context:
+            self.context['net_grid_band'].append(bands)
+        else:
+            self.context['net_grid_band'] = [bands]
+
+
+
+    def strategy_std(self, bar):
         # print('bar=>', bar)
         h_data = self.get_data(limit=601)
         if len(h_data) <= 600:
@@ -397,10 +438,92 @@ class SimulationEngine(object):
             # 'cov': cov
         })
 
+    def plot(self):
+        print(self.tttmp)
+        scatter_data = []
+        closes = [float(d['close']) for d in self.data_array]
+        opens = [float(d['open']) for d in self.data_array]
+        highs = [float(d['high']) for d in self.data_array]
+        lows = [float(d['low']) for d in self.data_array]
+        dtime = [d['datetime'] for d in self.data_array]
 
+        bands = {}
+        # i = 0
+        # print(self.context['band'])
+        # for band in self.context['net_grid_band']:
+        #     i += 1
+        #     name = 'b' + str(i)
+        #     bands[name] = pd.Series(
+        #                         index=dtime,
+        #                         data=
+        #     )
+        ng_bands = self.context['net_grid_band']
+        ndt = [b['datetime'] for b in ng_bands]
+        for i in range(1,10):
+            name = 'b' + str(i)
+            if name not in ng_bands[0]:
+                break
+            bands[name] = pd.Series(
+                                index=ndt,
+                                data=[b[name] for b in ng_bands]
+            )
+
+
+        # print('banks=>', bands)
+
+        # upper_band = pd.Series(
+        #     index=[p['datetime'] for p in self.indicate],
+        #     data=[p['upper_band'] for p in self.indicate])
+
+        # lower_band = pd.Series(
+        #     index=[p['datetime'] for p in self.indicate],
+        #     data=[p['lower_band'] for p in self.indicate])
+
+        # trade_buy = pd.Series(
+        #     index=[p['datetime'] for p in self._broker.order_history if p['status'] == 'filled' and p['side'] == 'buy'],
+        #     data=[p['price'] for p in self._broker.order_history if p['status'] == 'filled' and p['side'] == 'buy'])
+
+        # trade_sell = pd.Series(
+        #     index=[p['datetime'] for p in self._broker.order_history if p['status'] == 'filled' and p['side'] == 'sell'],
+        #     data=[p['price'] for p in self._broker.order_history if p['status'] == 'filled' and p['side'] == 'sell'])
+
+        layout = go.Layout(
+            title = self.pair,
+            xaxis = dict(domain = [0.05,0.95]),
+            yaxis = dict(title = 'amount',titlefont = dict(color = 'blue'),tickfont = dict(color = 'blue')),
+            yaxis2 = dict(title = 'alpha',anchor = 'free',overlaying = 'y',side = 'right',position = 1),
+            yaxis3 = dict(title = 'total_base',anchor = 'free',overlaying = 'y',position = 1,titlefont = dict(color = 'red'),tickfont = dict(color = 'red')),
+            yaxis4 = dict(title = 'total_quote',anchor = 'free',overlaying = 'y',titlefont = dict(color = 'red'),tickfont = dict(color = 'red'))
+        )
+
+        for b in bands:
+            scatter_data.append(go.Scatter(x=bands[b].index, y=bands[b], name=b))
+
+
+        # scatter_data.append(go.Scatter(x=fast_avg.index, y=fast_avg, name='fast_avg'))
+        # scatter_data.append(go.Scatter(x=slow_avg.index, y=slow_avg, name='slow_avg'))
+        # scatter_data.append(go.Scatter(x=mean.index, y=mean, name='mean'))
+        # scatter_data.append(go.Scatter(x=upper_band.index, y=upper_band, name='upper_band'))
+        # scatter_data.append(go.Scatter(x=lower_band.index, y=lower_band, name='lower_band'))
+
+        portfolio = self._broker.get_portfolio
+        portfolio_dt = [p['datetime'] for p in portfolio]
+        market_value = [p['market_value'] for p in portfolio]
+        # scatter_data.append(go.Scatter(x=portfolio_dt, y=market_value, name='market-value', mode = 'lines', yaxis='y2', marker=dict(color='green')))
+
+        traces = go.Candlestick(x=dtime,
+                                open=opens,
+                                high=highs,
+                                low=lows,
+                                close=closes,
+                                name='kline')
+        scatter_data.append(traces)
+        fig = go.Figure(scatter_data, layout=layout)
+        file_name = 'data/kline-tmp-plot.html'
+        py.plot(fig, auto_open=True, filename=file_name)
 
     
-    def plot(self):
+    def plot_bk(self):
         print(self.tttmp)
         scatter_data = []
         closes = [float(d['close']) for d in self.data_array]
@@ -509,7 +632,7 @@ def main():
     #  pair = 'TRX/ETH'
     pair = 'EOS/USDT'
     stime = datetime.datetime(2019,3,30)
-    etime = datetime.datetime(2019,4,4)
+    etime = datetime.datetime(2019,4,1)
     # stime = datetime.datetime(2019,3,31,12)
     # etime = datetime.datetime(2019,4,10)
     broker = Broker(pair)

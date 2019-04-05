@@ -361,7 +361,7 @@ class Strategy():
         self.order_manager = OrderManager(apikey, secretkey, password)
         self.spot_size = config.spot_step_size
         self.limit_base_position_size = limit_position # config.max_limit_base_position
-        self.t_rate = 1.0005 + 0.002 * 0.13
+        self.t_rate = 1.003 + 0.002 * 0.13
         self.last_bid_price = 0
         self.last_ask_price = 0
         self.init_base = 0
