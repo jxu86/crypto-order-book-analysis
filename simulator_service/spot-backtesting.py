@@ -162,7 +162,8 @@ class SimulationEngine(object):
         self.path = ''
         self._broker = broker
         self._data_type = data_type
-        self._mongodb = MongoService(host='10.10.20.90', port=57017)
+        # self._mongodb = MongoService(host='10.10.20.90', port=57017)
+        self._mongodb = MongoService(host='127.0.0.1', port=27017)
         self.data_pointer = 0
         self.data_array = self.load_data()
         self.data_len = len(self.data_array)
@@ -311,16 +312,28 @@ class SimulationEngine(object):
 
     def strategy(self, bar):
 
-        if self.count%1440==0:
-            h_data = self.get_data(limit=101)
-            if len(h_data) <= 100:
-                return
-            close_datas = [float(k['close']) for k in h_data]
-            self.context['band'], self.context['weight'] = NetGridSignal().signal(close_datas)
-        self.count += 1
+        # if self.count%1440==0:
+
+        h_data = self.get_data(limit=101)
+        if len(h_data) <= 100:
+            return
+
+        if 'band' in self.context:
+            b1 = self.context['band'][0]
+            bn = self.context['band'][-1]
+            if self.context['mean'] < b1*0.998 or self.context['mean'] > bn * 1.01:
+                self.count = 0
+
+        close_datas = [float(k['close']) for k in h_data]
+        if self.count == 0:
+            self.context['band'], self.context['weight'], _ = NetGridSignal().signal(close_datas)
+            self.count += 1
 
         if 'band' not in self.context or len(self.context['band']) == 0:
             return
+
+        self.context['mean'] = np.mean(close_datas[-20:])
+        # signal, mean, std, var = SDSignal(20).signal(close_datas)
 
         close = float(bar['close'])
         # print('band=>', self.context['band'])
@@ -341,6 +354,17 @@ class SimulationEngine(object):
             self.context['net_grid_band'].append(bands)
         else:
             self.context['net_grid_band'] = [bands]
+
+        if 'means' in self.context:
+            self.context['means'].append({
+                'mean': self.context['mean'],
+                'datetime': bar['datetime']
+            })
+        else:
+            self.context['means'] = [{
+                'mean': self.context['mean'],
+                'datetime': bar['datetime']
+            }]
 
 
 
@@ -468,7 +492,10 @@ class SimulationEngine(object):
                                 data=[b[name] for b in ng_bands]
             )
 
-
+        means = pd.Series(
+                        index = [c['datetime'] for c in self.context['means']],
+                        data = [c['mean'] for c in self.context['means']]
+        )
         # print('banks=>', bands)
 
         # upper_band = pd.Series(
@@ -498,8 +525,8 @@ class SimulationEngine(object):
 
         for b in bands:
             scatter_data.append(go.Scatter(x=bands[b].index, y=bands[b], name=b))
-
-
+        
+        scatter_data.append(go.Scatter(x=means.index, y=means, name='mean'))
         # scatter_data.append(go.Scatter(x=fast_avg.index, y=fast_avg, name='fast_avg'))
         # scatter_data.append(go.Scatter(x=slow_avg.index, y=slow_avg, name='slow_avg'))
         # scatter_data.append(go.Scatter(x=mean.index, y=mean, name='mean'))
@@ -631,8 +658,8 @@ def main():
     print('#main start#')
     #  pair = 'TRX/ETH'
     pair = 'EOS/USDT'
-    stime = datetime.datetime(2019,3,30)
-    etime = datetime.datetime(2019,4,1)
+    stime = datetime.datetime(2019,3,1)
+    etime = datetime.datetime(2019,3,10)
     # stime = datetime.datetime(2019,3,31,12)
     # etime = datetime.datetime(2019,4,10)
     broker = Broker(pair)

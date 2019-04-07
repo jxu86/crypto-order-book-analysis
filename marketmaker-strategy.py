@@ -374,6 +374,8 @@ class Strategy():
         self.strategy_status = 'start'
         self.sell_flag = True
         self.long_36_381 = Interval(3.6, 3.81)
+        self.long_5_56 = Interval(5, 5.6)
+
         self.short_3_37 = Interval(3, 3.7)
         self.current_order = None
         self.fail_orders = []
@@ -528,9 +530,9 @@ class Strategy():
                 print('####sell price not in buy zoom')
                 return
 
-            # if self.main_side == 'buy' and bast_price not in self.long_36_381:
-            #     print('####buy price not in buy zoom')
-            #     return
+            if self.main_side == 'buy' and bast_price not in self.long_5_56:
+                print('####buy price not in buy zoom')
+                return
                 
             if (self.main_side == 'buy' and self.last_bid_price == 0) or (self.main_side == 'sell' and self.last_ask_price == 0) or self.signal(self.main_side, bast_price):
                 order = self.submit_order(self.main_side, bast_price)
