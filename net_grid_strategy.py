@@ -49,7 +49,7 @@ class Strategy():
         # 当前订单list
         self.order_list = []
 
-        self.order_router =  OrderRouter(config.jxukalengo_apikey, config.jxukalengo_secretkey, config.jxukalengo_passphrase)
+        self.order_router =  OrderRouter(params.apikey, params.secretkey, params.passphrase)
         self.order_size = params.order_size
         self.base_init_amount = 0
         self.quote_init_amount = 0
@@ -127,6 +127,7 @@ class Strategy():
         trade_price = self.grid_list[fix_index]
         # filled_order = self.order_list[index]
         filled_client_oid = self.order_list[index]['client_oid']
+        # 后面根据client_oid计算realized profit
         if filled_client_oid[-1] == 's':
             client_oid = filled_client_oid.replace('s', 'e')
         else:
@@ -160,7 +161,6 @@ class Strategy():
             self.fix_net(next_index, self.current_index, 'buy')
             return
 
-
     def get_pending_orders(self, instrument_id):
         pending_orders = self.order_router.get_orders_pending(instrument_id)
         pending_orders = list(pending_orders[0])
@@ -192,11 +192,6 @@ class Strategy():
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--side',
-        type=str,
-        default='buy',
-        help='main side')
-    parser.add_argument(
         '--apikey',
         type=str,
         help='apikey')
@@ -205,39 +200,23 @@ def parse_args():
         type=str,
         help='secretkey')
     parser.add_argument(
-        '--password',
+        '--passphrase',
         type=str,
-        help='password')
-
-    parser.add_argument(
-        '--limit_position',
-        type=float,
-        help='limit_position')
-    parser.add_argument(
-        '--action',
-        type=str,
-        default='strategy',
-        help='action strategy or riskcontrol')
+        help='passphrase')
 
     args = parser.parse_args()
-
     return args
 
 
 def main():
     print('#main start#')
-    # args = parse_args()
-    # print('args ==>', args)
-
-    # apikey = args.apikey
-    # secretkey = args.secretkey
-    # password = args.password
-    # action = args.action
+    args = parse_args()
+    print('args ==>', args)
 
     params = {
-        'apikey': '', 
-        'secretkey': '', 
-        'passphrase': '', 
+        'apikey': args.apikey, 
+        'secretkey': args.secretkey, 
+        'passphrase': args.passphrase, 
         'high_price': 7, 
         'low_price': 2, 
         'grid_num': 10,
@@ -245,8 +224,6 @@ def main():
     }
     strategy = Strategy(StrategyParams(**params))
     strategy.run()
-
-
 
 if __name__ == '__main__':
     main()
