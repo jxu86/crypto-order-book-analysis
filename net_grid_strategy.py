@@ -120,7 +120,10 @@ class Strategy():
             if o['side'] == 'hold':
                 self.order_list.append(o)
                 continue
+
             open_order = self.find_open_order(o['side'], o['price'])
+            print('###open_order=>', open_order)
+
             #检查订单是否存在
             if open_order != None:
                 self.order_list.append(open_order)
