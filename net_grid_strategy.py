@@ -161,21 +161,27 @@ class Strategy():
         previous_order = self.order_list[previous_index]
         next_order = self.order_list[next_index]
 
-        previous_order_info = self.order_router.get_order_info(previous_order['order_id'], self.spot_pair)
-        print('previous_order_info=>', previous_order_info)
-        # 买单成交
-        if previous_order_info['status'] == 'filled':
-            self.order_list[previous_index] = previous_order_info
-            self.fix_net(previous_index, self.current_index, 'sell')
-            return
+        try:
+            previous_order_info = self.order_router.get_order_info(previous_order['order_id'], self.spot_pair)
+            print('previous_order_info=>', previous_order_info)
+            # 买单成交
+            if previous_order_info['status'] == 'filled':
+                self.order_list[previous_index] = previous_order_info
+                self.fix_net(previous_index, self.current_index, 'sell')
+                return
+        except:
+            print('previous_order order id=>', previous_order['order_id'])
         time.sleep(0.05)
-        next_order_info = self.order_router.get_order_info(next_order['order_id'], self.spot_pair)
-        print('next_order_info=>', next_order_info)
-        # 卖单成交
-        if next_order_info['status'] == 'filled':
-            self.order_list[next_index] = next_order_info
-            self.fix_net(next_index, self.current_index, 'buy')
-            return
+        try:
+            next_order_info = self.order_router.get_order_info(next_order['order_id'], self.spot_pair)
+            print('next_order_info=>', next_order_info)
+            # 卖单成交
+            if next_order_info['status'] == 'filled':
+                self.order_list[next_index] = next_order_info
+                self.fix_net(next_index, self.current_index, 'buy')
+                return
+        except:
+            print('next_order order id=>', next_order['order_id'])
 
         print('self.order_list =>', self.order_list)
 
