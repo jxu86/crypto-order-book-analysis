@@ -118,7 +118,8 @@ class Strategy():
 
             print(client_oid)
             order_info = self.order_router.submit_spot_order(client_oid, 'limit', o['side'], self.spot_pair, o['price'], self.order_size, '')
-            # # # TODO 处理下单不成功的情况
+            # TODO 处理下单不成功的情况
+
             self.order_list.append(order_info)
         print('self.order_list=>', self.order_list)
 
@@ -152,7 +153,7 @@ class Strategy():
             self.order_list[previous_index] = previous_order_info
             self.fix_net(previous_index, self.current_index, 'sell')
             return
-        time.sleep(0.1)
+        time.sleep(0.05)
         next_order_info = self.order_router.get_order_info(next_order['order_id'], self.spot_pair)
         print('next_order_info=>', next_order_info)
         # 卖单成交
@@ -161,6 +162,9 @@ class Strategy():
             self.fix_net(next_index, self.current_index, 'buy')
             return
 
+        print('self.order_list =>', self.order_list)
+
+        
     def get_pending_orders(self, instrument_id):
         pending_orders = self.order_router.get_orders_pending(instrument_id)
         pending_orders = list(pending_orders[0])
@@ -173,9 +177,8 @@ class Strategy():
         bid_one = data['bids'][0]['price']
         print('ask_one=>', ask_one)
         print('bid_one=>', bid_one)
-        
         if self.start_flag:
-            print('check_net==>')
+            print('###check net status')
             #检查网格状态
             self.check_net(bid_one, ask_one)
         else:
@@ -217,9 +220,9 @@ def main():
         'apikey': args.apikey, 
         'secretkey': args.secretkey, 
         'passphrase': args.passphrase, 
-        'high_price': 7, 
-        'low_price': 2, 
-        'grid_num': 10,
+        'high_price': 5.5, 
+        'low_price': 4.9, 
+        'grid_num': 30,
         'order_size': 0.1
     }
     strategy = Strategy(StrategyParams(**params))
