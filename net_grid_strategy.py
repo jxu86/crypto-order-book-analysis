@@ -107,7 +107,7 @@ class Strategy():
 
     # 检查订单是否已经存在
     def find_open_order(self, side, price):
-        order = [o for o in self.pending_orders if o['side']==side and o['price']==price]
+        order = [o for o in self.pending_orders if o['side']==side and float(o['price'])==price]
         if len(order) == 0:
             return None
         else:
