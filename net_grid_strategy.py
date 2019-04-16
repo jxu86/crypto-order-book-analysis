@@ -105,22 +105,34 @@ class Strategy():
         print('quote_init_amount=>', self.quote_init_amount)
         return order_list
 
+    # 检查订单是否已经存在
+    def find_open_order(self, side, price):
+        order = [o for o in self.pending_orders if o['side']==side and o['price']==price]
+        if len(order) == 0:
+            return None
+        else:
+            return order[0]
     # 撒网
     def throw_net(self, bid, ask):
         orders = self.get_net_order(bid, ask)
+        
         for o in orders:
             if o['side'] == 'hold':
                 self.order_list.append(o)
                 continue
-
+            open_order = self.find_open_order(o['side'], o['price'])
+            #检查订单是否存在
+            if open_order != None:
+                self.order_list.append(open_order)
+                continue
+            
             c_time = str(int(time.time()*1000))
             client_oid = 'grid'+c_time + 's'
-
             print(client_oid)
             order_info = self.order_router.submit_spot_order(client_oid, 'limit', o['side'], self.spot_pair, o['price'], self.order_size, '')
             # TODO 处理下单不成功的情况
-
             self.order_list.append(order_info)
+
         print('self.order_list=>', self.order_list)
 
     # 补网
@@ -164,7 +176,7 @@ class Strategy():
 
         print('self.order_list =>', self.order_list)
 
-        
+
     def get_pending_orders(self, instrument_id):
         pending_orders = self.order_router.get_orders_pending(instrument_id)
         pending_orders = list(pending_orders[0])
