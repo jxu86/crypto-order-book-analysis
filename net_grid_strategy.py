@@ -242,7 +242,7 @@ def main():
         'secretkey': args.secretkey, 
         'passphrase': args.passphrase, 
         'high_price': 5.5, 
-        'low_price': 4.9, 
+        'low_price': 5.1, 
         'grid_num': 30,
         'order_size': 0.1
     }
