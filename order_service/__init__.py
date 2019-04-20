@@ -42,7 +42,7 @@ class OrderRouter(object):
         except:
             # self.add_order(instrument_id=instrument_id, price=price, t_price=0, size=size, side=side, order=order_info)
             print('spot read order info err')
-            return None
+            return order_info
 
         while wait_flag:
             time.sleep(0.2)

@@ -183,7 +183,7 @@ class Strategy():
         except:
             print('next_order order id=>', next_order['order_id'])
 
-        print('self.order_list =>', self.order_list)
+        # print('self.order_list =>', self.order_list)
 
 
     def get_pending_orders(self, instrument_id):
