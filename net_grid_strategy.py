@@ -65,6 +65,7 @@ class Strategy():
             'stime': datetime.datetime.now(),
             'etime': '',
             'status':'start',
+            'pair': self.spot_pair,
             'high_price': params.high_price,
             'low_price': params.low_price,
             'grid_num': params.grid_num,
