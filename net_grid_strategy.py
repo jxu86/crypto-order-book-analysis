@@ -296,5 +296,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-# python net_grid_strategy.py --name=g001 --apikey=2fc1d002-212b-4659-8cd2-caeb135a8242 --secretkey=04925C00E947EC281F41532A9966C4B9 --passphrase='Xjc12345??' --high_price=5 --low_price=4 --grid_num=5 --order_size=0.1
