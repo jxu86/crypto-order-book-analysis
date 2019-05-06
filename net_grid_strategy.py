@@ -55,8 +55,8 @@ class Strategy():
         self.quote_init_amount = 0
         self.grid_num = params.grid_num
         self.pending_orders = self.get_pending_orders(self.spot_pair)
-        # self._mongodb = MongoService(host=config.mongo_host, port=config.mongo_port)
-        self._mongodb = MongoService(config.mongo_url)
+        self._mongodb = MongoService(host=config.mongo_host, port=config.mongo_port, username=config.mongo_username, password=config.mongo_password)
+        # self._mongodb = MongoService(config.mongo_url)
         print('grid_list=>', self.grid_list)
         print('grid_index=>', self.grid_index)
         self.name = params.name
