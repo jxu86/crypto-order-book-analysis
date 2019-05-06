@@ -14,6 +14,7 @@ class StrategyParams:
     apikey: str
     secretkey: str
     passphrase: str
+    name: str
     high_price: float
     low_price: float
     grid_num: int

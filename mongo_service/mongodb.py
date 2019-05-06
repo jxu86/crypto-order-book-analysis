@@ -17,6 +17,7 @@ class MongoService(object):
         self.kline_history_1min = self.db.kline_history_1min
         self.swap_funding_rate = self.db.swap_funding_rate
         self.swap_calc_rate = self.db.swap_calc_rate
+        self.strategy = self.db.strategy
 
     def update(self, collection, query, udata, upsert=True):
         return collection.update(query, udata, upsert=upsert)

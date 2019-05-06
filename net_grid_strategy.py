@@ -17,7 +17,7 @@ import pandas as pd
 import common
 from common import StrategyParams
 from order_service import OrderRouter
-
+from mongo_service.mongodb import MongoService
 class Strategy():
     def __init__(self, params):
 
@@ -55,8 +55,30 @@ class Strategy():
         self.quote_init_amount = 0
         self.grid_num = params.grid_num
         self.pending_orders = self.get_pending_orders(self.spot_pair)
+        self._mongodb = MongoService(host=config.mongo_host, port=config.mongo_port, username=config.mongo_username, password=config.mongo_password)
+
         print('grid_list=>', self.grid_list)
         print('grid_index=>', self.grid_index)
+        self.name = params.name
+        self.strategy_info = {
+            'name': params.name,
+            'stime': datetime.datetime.now(),
+            'etime': '',
+            'status':'start',
+            'high_price': params.high_price,
+            'low_price': params.low_price,
+            'grid_num': params.grid_num,
+            'order_size': params.order_size,
+            'init_base_amount': 0,
+            'init_quote_amount': 0,
+            'init_price': 0 ,
+            # 'realized_profit': 0,
+            # 'unrealized_profit': 0,
+            # 'total_profit': 0
+        }
+
+    def update_strategy_info(self, info):
+        return self._mongodb.update(self._mongodb.strategy, {'name': info['name']}, {'$set': info})
 
     # 计算一开始撒网的价格
     def get_net_order(self, bid, ask):
@@ -98,11 +120,12 @@ class Strategy():
 
         self.base_init_amount = round(self.base_init_amount, 10)
         self.quote_init_amount = round(self.quote_init_amount, 10)
-        print('mid_price=>', mid_price)
-        print('order_list=>', order_list)
-        print('current_index=>', self.current_index)
-        print('base_init_amount=>', self.base_init_amount)
-        print('quote_init_amount=>', self.quote_init_amount)
+        self.strategy_info['init_base_amount'] = self.base_init_amount
+        self.strategy_info['init_quote_amount'] = self.quote_init_amount
+        self.strategy_info['init_price'] = mid_price
+        print('strategy_info=>', self.strategy_info)
+        self.update_strategy_info(self.strategy_info)
+        
         return order_list
 
     # 检查订单是否已经存在
@@ -130,7 +153,7 @@ class Strategy():
                 continue
             
             c_time = str(int(time.time()*1000))
-            client_oid = 'grid'+c_time + 's'
+            client_oid = self.name + c_time + 's'
             print(client_oid)
             order_info = self.order_router.submit_spot_order(client_oid, 'limit', o['side'], self.spot_pair, o['price'], self.order_size, '')
             # TODO 处理下单不成功的情况
@@ -148,7 +171,7 @@ class Strategy():
             client_oid = filled_client_oid.replace('s', 'e')
         else:
             c_time = str(int(time.time()*1000))
-            client_oid = 'grid'+c_time + 's'
+            client_oid = self.name + c_time + 's'
         
         order_info = self.order_router.submit_spot_order(client_oid, 'limit', side, self.spot_pair, trade_price, self.order_size, '')
         self.order_list[fix_index] = order_info
@@ -182,8 +205,6 @@ class Strategy():
                 return
         except:
             print('next_order order id=>', next_order['order_id'])
-
-        # print('self.order_list =>', self.order_list)
 
 
     def get_pending_orders(self, instrument_id):
@@ -227,6 +248,29 @@ def parse_args():
         '--passphrase',
         type=str,
         help='passphrase')
+    parser.add_argument(
+        '--name',
+        type=str,
+        help='passphrase')
+
+    parser.add_argument(
+        '--high_price',
+        type=float,
+        help='high_price')
+    parser.add_argument(
+        '--low_price',
+        type=float,
+        help='low_price')
+
+    parser.add_argument(
+        '--grid_num',
+        type=int,
+        help='grid_num')
+
+    parser.add_argument(
+        '--order_size',
+        type=float,
+        help='order_size')
 
     args = parser.parse_args()
     return args
@@ -241,13 +285,16 @@ def main():
         'apikey': args.apikey, 
         'secretkey': args.secretkey, 
         'passphrase': args.passphrase, 
-        'high_price': 5.5, 
-        'low_price': 5.1, 
-        'grid_num': 30,
-        'order_size': 0.1
+        'name': args.name,
+        'high_price': args.high_price, 
+        'low_price': args.low_price, 
+        'grid_num': args.grid_num,
+        'order_size': args.order_size
     }
     strategy = Strategy(StrategyParams(**params))
     strategy.run()
 
 if __name__ == '__main__':
     main()
+
+# python net_grid_strategy.py --name=g001 --apikey=2fc1d002-212b-4659-8cd2-caeb135a8242 --secretkey=04925C00E947EC281F41532A9966C4B9 --passphrase='Xjc12345??' --high_price=5 --low_price=4 --grid_num=5 --order_size=0.1
