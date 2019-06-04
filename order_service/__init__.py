@@ -85,6 +85,18 @@ class OrderRouter(object):
     def get_ticker(self, instrument_id):
         return self.spot_api.get_specific_ticker(instrument_id)
 
+    def get_coin_info(self, instrument_id='all'):
+        coin_info = self.spot_api.get_coin_info()
+        if instrument_id == 'all':
+            return coin_info
+        else:
+            info = [i for i in coin_info if i['instrument_id'] == instrument_id]
+            if info:
+                return info[0]
+            else:
+                return None
+            
+
     def get_orders(self, symbol, stime, etime, status=''):
         to = None
         order_list = []

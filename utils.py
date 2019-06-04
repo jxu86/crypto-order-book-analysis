@@ -5,7 +5,7 @@ import time
 import pytz
 import numpy as np
 from json import JSONDecoder, JSONEncoder
-
+import math
 
 TIME_ZONE = 'Asia/Shanghai'
 
@@ -48,6 +48,23 @@ def calc_future_interest(future_price, spot_price, end_time):
 
 # def check_profit(a1,a2,b1,b2):
 #     return (a1-a2)/a2+(b2-b1)/b1 -0.006
+
+def diff_datetime(stime, etime):
+    timedelta = etime.timestamp()-stime.timestamp()
+    days = math.floor(timedelta/86400)
+    timedelta = timedelta%86400                   
+    hours = math.floor(timedelta/3600)
+    timedelta = timedelta%3600
+    minutes = math.floor(timedelta/60)
+    return {'days': days, 'hours': hours, 'minutes': minutes}
+
+def get_float_precision(data):
+    s_data = str(data)
+    tmp = s_data.split('.')
+    if len(tmp) < 2:
+        return 0
+    else:
+        return len(tmp[1])
 
 
 class JSONDateTimeEncoder(JSONEncoder):

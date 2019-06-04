@@ -22,22 +22,28 @@ class Strategy():
     def __init__(self, params):
 
         self.r = redis.Redis(
-            host='127.0.0.1',   
-            # host='10.10.20.60',
+            # host='127.0.0.1',   
+            host='10.10.20.60',
             port=6379,
             password='nowdone2go',
             decode_responses=True)
 
-        self.spot_pair = 'EOS-USDT'
-        self.base = 'EOS'
-        self.quote = 'USDT'
-        # subscribe_msg = 'okex.order_book.EOS/USDT'
+        self.spot_pair = params.pair
+        self.base, self.quote = self.spot_pair.split('-')
+        self.order_router =  OrderRouter(params.apikey, params.secretkey, params.passphrase)
+        coin_info = self.order_router.get_coin_info(self.spot_pair)
+        self.min_size = float(coin_info['min_size'])
+        self.tick_size = float(coin_info['tick_size'])
+        self.precision = utils.get_float_precision(self.tick_size)
+        print('===============>', self.precision)
+
+        # 依赖date service
         subscribe_msg = common.redis_subscribe_msg[self.spot_pair]
         print('subscribe_msg=>', subscribe_msg)
         self.ps = self.r.pubsub()
         self.ps.subscribe([subscribe_msg])  #订阅消息
 
-        self.net_grid = net_grid.NetGridSignal(params.high_price, params.low_price, params.grid_num)
+        self.net_grid = net_grid.NetGridSignal(params.high_price, params.low_price, params.grid_num, self.precision)
         # 格子价格list
         self.grid_list = self.net_grid.calc_price_interval()
         # 格子序号
@@ -49,7 +55,7 @@ class Strategy():
         # 当前订单list
         self.order_list = []
 
-        self.order_router =  OrderRouter(params.apikey, params.secretkey, params.passphrase)
+        
         self.order_size = params.order_size
         self.base_init_amount = 0
         self.quote_init_amount = 0
@@ -273,6 +279,11 @@ def parse_args():
         type=float,
         help='order_size')
 
+    parser.add_argument(
+        '--pair',
+        type=str,
+        help='pair')
+
     args = parser.parse_args()
     return args
 
@@ -290,7 +301,8 @@ def main():
         'high_price': args.high_price, 
         'low_price': args.low_price, 
         'grid_num': args.grid_num,
-        'order_size': args.order_size
+        'order_size': args.order_size,
+        'pair': args.pair
     }
     strategy = Strategy(StrategyParams(**params))
     strategy.run()

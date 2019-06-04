@@ -5,7 +5,7 @@ import datetime
 from display import Display
 import math
 from mongo_service.mongodb import MongoService
-
+import utils
 class Analyst():
     def __init__(self, apikey, secretkey, passphrase, pair):
         self.order_router =  OrderRouter(apikey, secretkey, passphrase)
@@ -47,7 +47,7 @@ class Analyst():
         y_axis_interval = 30
         base, quote = self.pair.split('-')
         display.display_info('投资回报分析(单位: {})'.format(quote), y_axis, x_axis)
-        display.display_info('pair: {}'.format(self.pair), y_axis+30, x_axis)
+        display.display_info('币对: {}'.format(self.pair), y_axis+30, x_axis)
         display.display_info('当前时间: {}'.format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")), y_axis+60, x_axis)
 
         x_axis += 1
@@ -64,7 +64,7 @@ class Analyst():
 
         x_axis += 1
 
-        fee_text = '手续费: {fee}'.format(fee='NA')
+        fee_text = '手续费: {fee}'.format(fee=strategy_info['fee'])
         display.display_info(fee_text, y_axis, x_axis)
 
         unrealized_profit_text = '浮动盈亏: {unrealized_profit}'.format(unrealized_profit=strategy_info['unrealized_profit'])
@@ -77,12 +77,19 @@ class Analyst():
         price_text = '当前价格: {price}'.format(price=price)
         display.display_info(price_text, y_axis, x_axis)
 
+        volume_text = '成交量: {}'.format(strategy_info['volume'])
+        display.display_info(volume_text, y_axis + y_axis_interval, x_axis)
+
         x_axis += 2
         display.display_info('-'*100, y_axis, x_axis)
         x_axis += 1
         display.display_info('策略信息', y_axis, x_axis)
-        text = '开始时间: {}'.format(strategy_info['stime'].strftime("%Y-%m-%d %H:%M:%S"))
-        display.display_info(text, y_axis+30, x_axis)
+        x_axis += 2
+        text = '开仓时间: {}'.format(strategy_info['stime'].strftime("%Y-%m-%d %H:%M:%S"))
+        display.display_info(text, y_axis, x_axis)
+
+        text = '运行了: {}'.format(strategy_info['run_time'])
+        display.display_info(text, y_axis + y_axis_interval*2, x_axis)
 
         x_axis += 1
         text = '最高价: {}'.format(strategy_info['high_price'])
@@ -90,19 +97,22 @@ class Analyst():
         text = '最低价: {}'.format(strategy_info['low_price'])
         display.display_info(text, y_axis+30, x_axis)
 
-        text = '进入价格: {}'.format(strategy_info['init_price'])
+        text = '开仓价格: {}'.format(strategy_info['init_price'])
         display.display_info(text, y_axis+30*2, x_axis)
 
-        text = '网格数: {}'.format(strategy_info['grid_num'])
-        display.display_info(text, y_axis+30*3, x_axis)
-
         x_axis += 1
-        text = '单网格买入数量: {}'.format(strategy_info['order_size'])
+        text = '网格数: {}'.format(strategy_info['grid_num'])
         display.display_info(text, y_axis, x_axis)
 
-        text = '交易数: {}'.format(len(filled_orders))
-        display.display_info(text, y_axis+30, x_axis)
+ 
+        text = '单网格买入数量: {}'.format(strategy_info['order_size'])
+        display.display_info(text, y_axis+y_axis_interval, x_axis)
 
+        text = '交易数: {}'.format(len(filled_orders))
+        display.display_info(text, y_axis+y_axis_interval*2, x_axis)
+
+        text = '配对数: {}'.format(strategy_info['pair_count'])
+        display.display_info(text, y_axis+y_axis_interval*3, x_axis)
     
 
         x_axis += 1
@@ -110,12 +120,12 @@ class Analyst():
 
 
 
-        x_axis += 1
-        display.display_info('当前订单详情', y_axis, x_axis)
+        # x_axis += 1
+        # display.display_info('当前订单详情', y_axis, x_axis)
 
         x_axis += 1
-        display.display_info('待成交订单', y_axis, x_axis)
-        x_axis += 1
+        display.display_info('待成交订单({})'.format(len(orders)), y_axis, x_axis)
+        x_axis += 2
         # def init_axis():
         buy_x_axis = x_axis
         buy_y_axis = y_axis
@@ -136,13 +146,14 @@ class Analyst():
         buy_y_axis += (b_lows - 1) * 20
         sell_y_axis = buy_y_axis + 20
 
-        for i in range(size_limit):
-            display.display_info('|', buy_y_axis + 14, buy_x_axis + i)
+        # for i in range(size_limit):
+        #     display.display_info('|', buy_y_axis + 14, buy_x_axis + i)
 
 
         for o in buy_orders:
             order_text = '买: {}'.format(o['price'])
-            display.display_info(order_text, buy_y_axis, buy_x_axis)
+            display.display_info(' '*20, buy_y_axis, buy_x_axis)
+            display.display_info(order_text, buy_y_axis, buy_x_axis, 2)
             b_size += 1
             buy_x_axis += 1
             if b_size % size_limit == 0:
@@ -151,7 +162,8 @@ class Analyst():
 
         for o in sell_orders:
             order_text = '卖: {}'.format(o['price'])
-            display.display_info(order_text, sell_y_axis, sell_x_axis)
+            display.display_info(' '*20, sell_y_axis, sell_x_axis)
+            display.display_info(order_text, sell_y_axis, sell_x_axis, 1)
             sell_x_axis += 1
             s_size += 1
             if s_size % size_limit == 0:
@@ -159,16 +171,15 @@ class Analyst():
                 sell_y_axis += 20 
 
         x_axis += size_limit
-        display.display_info('-'*100, y_axis, x_axis)
-        x_axis += 1
-        display.display_info('最新交易', 0, x_axis, 1)
-        x_axis += 1
-        f_y_axis = 0
-        f_x_axis = x_axis
-        f_size = 0
-        if len(filled_orders):
-            filled_orders = filled_orders[:80]
-            for o in filled_orders:
+        if strategy_info['unpair_orders']:
+            display.display_info('-'*100, y_axis, x_axis)
+            x_axis += 1
+            display.display_info('待匹配订单({})'.format(len(strategy_info['unpair_orders'])), 0, x_axis)
+            x_axis += 2
+            f_y_axis = 0
+            f_x_axis = x_axis
+            f_size = 0
+            for o in strategy_info['unpair_orders']:
                 side = '买'
                 c = 2
                 if o['side'] == 'sell':
@@ -183,6 +194,32 @@ class Analyst():
                     f_y_axis += 60 
 
 
+        # 已成交订单
+        # x_axis += size_limit
+        # display.display_info('-'*100, y_axis, x_axis)
+        # x_axis += 1
+        # display.display_info('最新成交订单', 0, x_axis)
+        # x_axis += 2
+        # f_y_axis = 0
+        # f_x_axis = x_axis
+        # f_size = 0
+        # if len(filled_orders):
+        #     filled_orders = filled_orders[:80]
+        #     for o in filled_orders:
+        #         side = '买'
+        #         c = 2
+        #         if o['side'] == 'sell':
+        #             side = '卖'
+        #             c = 1
+        #         filled_order_info = '{dt} {client_oid} {side} {size} {price}'.format(dt=o['datetime'].strftime("%Y-%m-%d %H:%M:%S"), side=side, price=o['price'], size=o['size'], client_oid=o['client_oid'])
+        #         display.display_info(filled_order_info, f_y_axis, f_x_axis, c)
+        #         f_x_axis += 1
+        #         f_size += 1
+        #         if f_size % size_limit == 0:
+        #             f_x_axis = x_axis
+        #             f_y_axis += 60 
+
+
         # display.display_info('Press any key to continue...', 0, x_axis)
         # display.get_ch_and_continue()
     def read_strategy_info(self):
@@ -193,6 +230,9 @@ class Analyst():
     def clac_profit(self, filled_orders, c_price):
         realized_profit = 0
         unrealized_profit = 0
+        pair_count = 0
+        unpair_orders = []
+        
         s_orders_obj = {}
         s_orders = [o for o in filled_orders if o['client_oid'][-1] == 's']
         e_orders = [o for o in filled_orders if o['client_oid'][-1] == 'e']
@@ -208,9 +248,13 @@ class Analyst():
                 else:
                     realized_profit += (s_orders_obj[s_order_client_oid]['price'] - o['price'])  * s_orders_obj[s_order_client_oid]['filled_size']
                 s_orders_obj.pop(s_order_client_oid)
+                pair_count += 1
+            else:
+                unpair_orders.append(o)
     
         if s_orders_obj:
             for k in s_orders_obj:
+                unpair_orders.append(s_orders_obj[k])
                 if s_orders_obj[k]['side'] == 'buy':
                     unrealized_profit += (c_price - s_orders_obj[k]['price']) * s_orders_obj[k]['filled_size']
 
@@ -219,7 +263,14 @@ class Analyst():
         unrealized_profit = round(unrealized_profit, 6)
         total_profit = realized_profit + unrealized_profit
         total_profit = round(total_profit, 6)
-        return realized_profit, unrealized_profit, total_profit
+        return {
+            'realized_profit': realized_profit,
+            'unrealized_profit': unrealized_profit,
+            'total_profit': total_profit,
+            'pair_count': pair_count,
+            'unpair_orders': unpair_orders
+        }
+
 
     def clac_annual_rate(self, rate, stime, etime):
         hours_delta = max(math.ceil((etime.timestamp() - stime.timestamp())/3600), 1)
@@ -228,15 +279,38 @@ class Analyst():
         annual_rate = round(annual_rate, 4)
 
         return annual_rate
+    def clac_volume(self, filled_orders):
+        volume = 0
+        for o in filled_orders:
+            volume += float(o['filled_size']) * float(o['price'])
+
+        volume = round(volume)
+        return volume
+
 
     def calc_indicator(self, strategy_info, filled_orders, c_price):
         indicator = {}
         indicator['init_amount'] = strategy_info['init_base_amount'] * strategy_info['init_price'] + strategy_info['init_quote_amount']
         indicator['init_amount'] = round(indicator['init_amount'], 6)
-        indicator['realized_profit'], indicator['unrealized_profit'], indicator['total_profit'] = self.clac_profit(filled_orders, c_price)
+
+        profit_info = self.clac_profit(filled_orders, c_price)
+        indicator.update(profit_info)
+        # indicator['realized_profit'], indicator['unrealized_profit'], indicator['total_profit'], indicator['pair_count'], indicator['pair_count'] = profit_info['realized_profit'], \
+        #     profit_info['unrealized_profit'], profit_info['total_profit'], profit_info['pair_count']
+
+
         indicator['rate'] = round(indicator['realized_profit'] / indicator['init_amount'], 4)
         indicator['annual_rate'] = self.clac_annual_rate(indicator['rate'], strategy_info['stime'], datetime.datetime.now())
         indicator['total_rate'] = round(indicator['total_profit'] / indicator['init_amount'], 4)
+        indicator['volume'] = self.clac_volume(filled_orders)
+        indicator['fee'] = round(indicator['volume'] * 0.001 * 0.15, 6)
+        run_time = utils.diff_datetime(strategy_info['stime'], datetime.datetime.now())
+        if run_time['days']:
+            indicator['run_time'] = '{days}天{hours}小时{minutes}分'.format(days=run_time['days'], hours=run_time['hours'], minutes=run_time['minutes'])
+        elif run_time['hours']:
+            indicator['run_time'] = '{hours}小时{minutes}分'.format( hours=run_time['hours'], minutes=run_time['minutes'])
+        else:
+            indicator['run_time'] = '{minutes}分'.format(minutes=run_time['minutes'])
         return indicator
 
     def run(self):
@@ -251,14 +325,11 @@ class Analyst():
             last = float(ticker['last'])
 
             etime = datetime.datetime.now()
-            # stime = etime - datetime.timedelta(hours = 1)
             filled_orders = self.order_router.get_orders(self.pair, stime=stime, etime=etime, status='filled')
-            # print('filled_orders=>', filled_orders)
-            
+            filled_orders = [o for o in filled_orders if o['client_oid'][:4] == strategy_info['name']]
             strategy_info.update(self.calc_indicator(strategy_info, filled_orders, last))
-            # print('strategy_info=>', strategy_info)
             self.dis_profit_detail(strategy_info, open_orders, filled_orders, last)
-            time.sleep(5)
+            time.sleep(30)
 
 
 def parse_args():
@@ -293,5 +364,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-    # --passphrase=Xjc12345??

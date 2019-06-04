@@ -4,8 +4,9 @@ from pymongo import MongoClient
 
 class MongoService(object):
     def __init__(self, host, port, username='nowdone', password='nowdone2go', authSource='nowdone'):
-        self.conn = MongoClient(host=host, port=port, username=username, password=password, authSource=authSource)
+        # self.conn = MongoClient(host=host, port=port, username=username, password=password, authSource=authSource)
         # self.conn = MongoClient(host=host, port=port)
+        self.conn = MongoClient('mongodb://nowdone_readwrite:o7C20VteW5SOlzcRUJE2@10.10.20.90:57017/nowdone')
         # self.db = self.conn.exchange_data
         self.db = self.conn.nowdone
         self.order = self.db.order
